@@ -72,8 +72,6 @@ const handleCheckPermission = () => {
 
 <template>
   <div class="page-container">
-    
-
     <ElCard class="box-card" style="margin-top: 20px">
       <template #header>
         <div class="card-header">

@@ -50,27 +50,27 @@ const loadDatasources = () => {
   return [...DEFAULT_DATASOURCES]
 }
 
-const saveDatasources = (datasources) => {
+const saveDatasources = datasources => {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(datasources))
 }
 
 // 分页查询
 export function pageQuery(params) {
-  return new Promise((resolve) => {
+  return new Promise(resolve => {
     setTimeout(() => {
       const datasources = loadDatasources()
       let filtered = datasources
 
       // 按名称模糊查询
       if (params.datasourceName) {
-        filtered = filtered.filter((ds) =>
+        filtered = filtered.filter(ds =>
           ds.datasourceName.toLowerCase().includes(params.datasourceName.toLowerCase())
         )
       }
 
       // 按数据库类型查询
       if (params.dbType) {
-        filtered = filtered.filter((ds) => ds.dbType === params.dbType)
+        filtered = filtered.filter(ds => ds.dbType === params.dbType)
       }
 
       // 分页
@@ -85,10 +85,10 @@ export function pageQuery(params) {
 
 // 根据ID查询
 export function queryById(id) {
-  return new Promise((resolve) => {
+  return new Promise(resolve => {
     setTimeout(() => {
       const datasources = loadDatasources()
-      const datasource = datasources.find((ds) => ds.id === id)
+      const datasource = datasources.find(ds => ds.id === id)
       resolve(successResponse(datasource || null))
     }, 100)
   })
@@ -96,7 +96,7 @@ export function queryById(id) {
 
 // 新增
 export function insert(data) {
-  return new Promise((resolve) => {
+  return new Promise(resolve => {
     setTimeout(() => {
       const datasources = loadDatasources()
       const newDatasource = {
@@ -114,10 +114,10 @@ export function insert(data) {
 
 // 更新
 export function update(data) {
-  return new Promise((resolve) => {
+  return new Promise(resolve => {
     setTimeout(() => {
       const datasources = loadDatasources()
-      const index = datasources.findIndex((ds) => ds.id === data.id)
+      const index = datasources.findIndex(ds => ds.id === data.id)
       if (index !== -1) {
         datasources[index] = {
           ...datasources[index],
@@ -133,10 +133,10 @@ export function update(data) {
 
 // 根据ID删除
 export function deleteById(id) {
-  return new Promise((resolve) => {
+  return new Promise(resolve => {
     setTimeout(() => {
       const datasources = loadDatasources()
-      const filtered = datasources.filter((ds) => ds.id !== id)
+      const filtered = datasources.filter(ds => ds.id !== id)
       saveDatasources(filtered)
       resolve(successResponse(true))
     }, 150)
@@ -145,10 +145,10 @@ export function deleteById(id) {
 
 // 批量删除
 export function batchDeleteByIds(ids) {
-  return new Promise((resolve) => {
+  return new Promise(resolve => {
     setTimeout(() => {
       const datasources = loadDatasources()
-      const filtered = datasources.filter((ds) => !ids.includes(ds.id))
+      const filtered = datasources.filter(ds => !ids.includes(ds.id))
       saveDatasources(filtered)
       resolve(successResponse(true))
     }, 150)

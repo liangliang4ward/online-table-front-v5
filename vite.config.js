@@ -21,7 +21,7 @@ export default defineConfig(({ mode, command }) => {
         '/api/onlineTable': {
           target: 'http://localhost:8683',
           changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/api/, '')
+          rewrite: path => path.replace(/^\/api/, '')
         },
         '/api': {
           target: 'http://10.10.10.128:9000',

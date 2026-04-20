@@ -1,5 +1,5 @@
 <script setup>
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   ElCard,
@@ -24,7 +24,15 @@ import {
   ElPopover,
   ElTooltip
 } from 'element-plus'
-import { pageQuery, queryById, insert, update, deleteById, batchDeleteByIds, syncDb } from '@/mock/tableHead'
+import {
+  pageQuery,
+  queryById,
+  insert,
+  update,
+  deleteById,
+  batchDeleteByIds,
+  syncDb
+} from '@/mock/tableHead'
 import { pageQuery as queryDatasourceList } from '@/mock/datasource'
 
 const router = useRouter()
@@ -104,13 +112,13 @@ const SYSTEM_FIELDS = ['create_time', 'update_time', 'delete_flag']
 
 const FIXED_NAME_FIELDS = ['id', 'create_by', 'update_by', ...SYSTEM_FIELDS]
 
-const toCamelCase = (str) => {
+const toCamelCase = str => {
   if (!str) return ''
   return str.toLowerCase().replace(/_([a-z])/g, (_, letter) => letter.toUpperCase())
 }
 
 // 获取默认控件类型（根据数据库类型推断）
-const getDefaultControlType = (dbType) => {
+const getDefaultControlType = dbType => {
   const map = {
     string: 'input',
     int: 'inputNumber',
@@ -126,7 +134,7 @@ const getDefaultControlType = (dbType) => {
 }
 
 // 获取默认查询类型
-const getDefaultQueryType = (dbType) => {
+const getDefaultQueryType = dbType => {
   if (['date', 'datetime'].includes(dbType)) {
     return 'between'
   }
@@ -137,14 +145,14 @@ const getDefaultQueryType = (dbType) => {
 }
 
 // 判断是否允许小数点（只有decimal类型允许）
-const isAllowDecimal = (dbType) => {
+const isAllowDecimal = dbType => {
   return ['decimal'].includes(dbType)
 }
 
 // 根据数据库类型获取可用的控件类型选项
-const getAvailableControlTypes = (dbType) => {
+const getAvailableControlTypes = dbType => {
   const allTypes = [...CONTROL_TYPE_OPTIONS]
-  
+
   // 根据数据库类型过滤控件类型
   switch (dbType) {
     case 'varchar':
@@ -152,34 +160,34 @@ const getAvailableControlTypes = (dbType) => {
     case 'longtext':
       // 字符串/文本类型：允许文本框、文本域、下拉选择、单选、复选、文件上传、富文本
       // 不允许数字输入、日期选择、日期时间选择
-      return allTypes.filter((t) => 
-        !['inputNumber', 'datePicker', 'datetimePicker'].includes(t.value)
+      return allTypes.filter(
+        t => !['inputNumber', 'datePicker', 'datetimePicker'].includes(t.value)
       )
     case 'int':
     case 'bigint':
     case 'tinyint':
       // 整型类型：允许数字输入、下拉选择、单选、复选
       // 不允许日期选择、日期时间选择、文件上传、富文本
-      return allTypes.filter((t) => 
-        !['datePicker', 'datetimePicker', 'upload', 'richText'].includes(t.value)
+      return allTypes.filter(
+        t => !['datePicker', 'datetimePicker', 'upload', 'richText'].includes(t.value)
       )
     case 'date':
       // 日期类型：允许日期选择、文本框
       // 不允许数字输入、日期时间选择、下拉多选、复选、文件上传、富文本
-      return allTypes.filter((t) => 
+      return allTypes.filter(t =>
         ['input', 'textarea', 'datePicker', 'select', 'radio'].includes(t.value)
       )
     case 'datetime':
       // 日期时间类型：允许日期时间选择、文本框
       // 不允许数字输入、日期选择、下拉多选、复选、文件上传、富文本
-      return allTypes.filter((t) => 
+      return allTypes.filter(t =>
         ['input', 'textarea', 'datetimePicker', 'select', 'radio'].includes(t.value)
       )
     case 'decimal':
       // 小数类型：允许数字输入、下拉选择、单选、复选
       // 不允许日期选择、日期时间选择、文件上传、富文本
-      return allTypes.filter((t) => 
-        !['datePicker', 'datetimePicker', 'upload', 'richText'].includes(t.value)
+      return allTypes.filter(
+        t => !['datePicker', 'datetimePicker', 'upload', 'richText'].includes(t.value)
       )
     default:
       return allTypes
@@ -196,6 +204,73 @@ const availableControlTypes = computed(() => {
   }
   return getAvailableControlTypes(currentConfigField.value.dbType)
 })
+
+// 根据控件类型获取可用的查询方式
+const getAvailableQueryTypes = controlType => {
+  const allTypes = [...QUERY_TYPE_OPTIONS]
+
+  switch (controlType) {
+    case 'input':
+    case 'textarea':
+    case 'richText':
+      // 文本类型：支持不查询、等于、模糊查询
+      return allTypes.filter(t => ['none', 'eq', 'like'].includes(t.value))
+
+    case 'password':
+      // 密码类型：只支持不查询、等于（不推荐查询）
+      return allTypes.filter(t => ['none', 'eq'].includes(t.value))
+
+    case 'inputNumber':
+      // 数字类型：支持不查询、等于、大于、小于、大于等于、小于等于、区间
+      return allTypes.filter(t =>
+        ['none', 'eq', 'gt', 'lt', 'gte', 'lte', 'between'].includes(t.value)
+      )
+
+    case 'select':
+    case 'radio':
+      // 单选类型：只支持不查询、等于
+      return allTypes.filter(t => ['none', 'eq'].includes(t.value))
+
+    case 'selectMultiple':
+    case 'checkbox':
+      // 多选类型：只支持不查询、多选
+      return allTypes.filter(t => ['none', 'in'].includes(t.value))
+
+    case 'datePicker':
+    case 'datetimePicker':
+      // 日期类型：支持不查询、等于、大于、小于、大于等于、小于等于、区间
+      return allTypes.filter(t =>
+        ['none', 'eq', 'gt', 'lt', 'gte', 'lte', 'between'].includes(t.value)
+      )
+
+    case 'upload':
+      // 文件上传：只支持不查询
+      return allTypes.filter(t => t.value === 'none')
+
+    default:
+      return allTypes
+  }
+}
+
+// 当前字段可用的查询方式
+const availableQueryTypes = computed(() => {
+  return getAvailableQueryTypes(fieldConfigFormData.controlType)
+})
+
+// 监听控件类型变化，自动调整查询方式
+const watchControlType = () => {
+  const available = getAvailableQueryTypes(fieldConfigFormData.controlType)
+  const currentQueryType = fieldConfigFormData.queryType
+
+  // 如果当前查询方式不再可用，自动切换到第一个可用的
+  const isAvailable = available.some(t => t.value === currentQueryType)
+  if (!isAvailable && available.length > 0) {
+    fieldConfigFormData.queryType = available[0].value
+  }
+}
+
+// 监听控件类型变化
+watch(() => fieldConfigFormData.controlType, watchControlType)
 
 const getDefaultFields = () => [
   {
@@ -401,7 +476,7 @@ const indexFormRules = {
 }
 
 const fieldOptions = computed(() => {
-  return formData.fields.map((f) => ({
+  return formData.fields.map(f => ({
     label: f.dbFieldName,
     value: f.dbFieldName
   }))
@@ -409,9 +484,9 @@ const fieldOptions = computed(() => {
 
 // 主表字段选项（用于附表关联字段配置）
 const mainTableFieldOptions = computed(() => {
-  const mainTable = mainTableOptions.value.find((t) => t.tableName === formData.mainTable)
+  const mainTable = mainTableOptions.value.find(t => t.tableName === formData.mainTable)
   if (!mainTable?.fields) return []
-  return mainTable.fields.map((f) => ({
+  return mainTable.fields.map(f => ({
     label: f.dbFieldName,
     value: f.dbFieldName
   }))
@@ -419,7 +494,7 @@ const mainTableFieldOptions = computed(() => {
 
 // 附表字段选项
 const subTableFieldOptions = computed(() => {
-  return formData.fields.map((f) => ({
+  return formData.fields.map(f => ({
     label: f.dbFieldName,
     value: f.dbFieldName
   }))
@@ -427,10 +502,25 @@ const subTableFieldOptions = computed(() => {
 
 // 预设校验规则
 const PRESET_VALIDATION_RULES = [
-  { label: '邮箱', value: 'email', pattern: '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$', message: '请输入正确的邮箱地址' },
+  {
+    label: '邮箱',
+    value: 'email',
+    pattern: '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$',
+    message: '请输入正确的邮箱地址'
+  },
   { label: '手机号', value: 'phone', pattern: '^1[3-9]\\d{9}$', message: '请输入正确的手机号' },
-  { label: '身份证号', value: 'idCard', pattern: '(^\\d{15}$)|(^\\d{18}$)|(^\\d{17}(\\d|X|x)$)', message: '请输入正确的身份证号' },
-  { label: 'URL', value: 'url', pattern: '^(https?|ftp):\\/\\/[^\\s/$.?#].[^\\s]*$', message: '请输入正确的URL地址' },
+  {
+    label: '身份证号',
+    value: 'idCard',
+    pattern: '(^\\d{15}$)|(^\\d{18}$)|(^\\d{17}(\\d|X|x)$)',
+    message: '请输入正确的身份证号'
+  },
+  {
+    label: 'URL',
+    value: 'url',
+    pattern: '^(https?|ftp):\\/\\/[^\\s/$.?#].[^\\s]*$',
+    message: '请输入正确的URL地址'
+  },
   { label: '数字', value: 'number', pattern: '^-?\\d+(\\.\\d+)?$', message: '请输入数字' },
   { label: '整数', value: 'integer', pattern: '^-?\\d+$', message: '请输入整数' },
   { label: '正整数', value: 'positiveInteger', pattern: '^[1-9]\\d*$', message: '请输入正整数' },
@@ -448,7 +538,7 @@ const LAYOUT_TYPE_OPTIONS = [
 const fieldConfigDialogVisible = ref(false)
 const currentFieldIndex = ref(-1)
 const fieldConfigFormRef = ref(null)
-const fieldConfigActiveTab = ref('display')
+const fieldConfigActiveTab = ref('control')
 const fieldConfigFormData = reactive({
   controlType: 'input',
   queryType: 'none',
@@ -458,6 +548,7 @@ const fieldConfigFormData = reactive({
   isAddable: true,
   isShowInAdd: true,
   layoutType: 'default',
+  isSensitiveField: false,
   controlConfig: {
     dataSourceType: 'static',
     dictionaryCode: '',
@@ -487,24 +578,28 @@ const fieldConfigFormData = reactive({
 const openFieldConfigDialog = (row, index) => {
   currentFieldIndex.value = index
   currentConfigField.value = row
-  
-  // 重置到显示与布局tab
-  fieldConfigActiveTab.value = 'display'
-  
+
+  // 重置到控件配置tab
+  fieldConfigActiveTab.value = 'control'
+
   // 初始化表单数据
   fieldConfigFormData.controlType = row.controlType || getDefaultControlType(row.dbType)
-  fieldConfigFormData.queryType = row.queryType || (row.isQuery ? getDefaultQueryType(row.dbType) : 'none')
-  
+  fieldConfigFormData.queryType =
+    row.queryType || (row.isQuery ? getDefaultQueryType(row.dbType) : 'none')
+
   // 显示权限配置
   fieldConfigFormData.isShowList = row.isShowList !== false
   fieldConfigFormData.isShowForm = row.isShowForm !== false
   fieldConfigFormData.isEditable = row.isEditable !== false
   fieldConfigFormData.isAddable = row.isAddable !== false
   fieldConfigFormData.isShowInAdd = row.isShowInAdd !== false
-  
+
   // 布局配置
   fieldConfigFormData.layoutType = row.layoutType || 'default'
-  
+
+  // 敏感字段配置（密码等字段，列表不展示、数据不返回）
+  fieldConfigFormData.isSensitiveField = row.isSensitiveField === true
+
   // 复制 controlConfig
   const controlConfig = row.controlConfig || {}
   fieldConfigFormData.controlConfig = {
@@ -520,7 +615,7 @@ const openFieldConfigDialog = (row, index) => {
     fileTypes: controlConfig.fileTypes ? [...controlConfig.fileTypes] : [],
     maxSize: controlConfig.maxSize || 10
   }
-  
+
   // 复制 validationRules
   const validationRules = row.validationRules || {}
   fieldConfigFormData.validationRules = {
@@ -533,7 +628,7 @@ const openFieldConfigDialog = (row, index) => {
     presetRule: validationRules.presetRule || '',
     message: validationRules.message || ''
   }
-  
+
   fieldConfigDialogVisible.value = true
 }
 
@@ -541,27 +636,30 @@ const openFieldConfigDialog = (row, index) => {
 const handleFieldConfigSubmit = async () => {
   const valid = await fieldConfigFormRef.value?.validate().catch(() => false)
   if (!valid) return
-  
+
   if (currentFieldIndex.value >= 0) {
     const field = formData.fields[currentFieldIndex.value]
     field.controlType = fieldConfigFormData.controlType
     field.queryType = fieldConfigFormData.queryType
     field.isQuery = fieldConfigFormData.queryType !== 'none'
-    
+
     // 显示权限配置
     field.isShowList = fieldConfigFormData.isShowList
     field.isShowForm = fieldConfigFormData.isShowForm
     field.isEditable = fieldConfigFormData.isEditable
     field.isAddable = fieldConfigFormData.isAddable
     field.isShowInAdd = fieldConfigFormData.isShowInAdd
-    
+
     // 布局配置
     field.layoutType = fieldConfigFormData.layoutType
-    
+
+    // 敏感字段配置
+    field.isSensitiveField = fieldConfigFormData.isSensitiveField
+
     field.controlConfig = { ...fieldConfigFormData.controlConfig }
     field.validationRules = { ...fieldConfigFormData.validationRules }
   }
-  
+
   fieldConfigDialogVisible.value = false
 }
 
@@ -574,7 +672,7 @@ const addOption = () => {
 }
 
 // 删除选项
-const removeOption = (index) => {
+const removeOption = index => {
   fieldConfigFormData.controlConfig.options.splice(index, 1)
 }
 
@@ -614,14 +712,14 @@ const isDateFieldType = computed(() => {
 })
 
 // 获取控件类型标签
-const getControlTypeLabel = (controlType) => {
-  const option = CONTROL_TYPE_OPTIONS.find((o) => o.value === controlType)
+const getControlTypeLabel = controlType => {
+  const option = CONTROL_TYPE_OPTIONS.find(o => o.value === controlType)
   return option ? option.label : ''
 }
 
 // 获取查询方式标签
-const getQueryTypeLabel = (queryType) => {
-  const option = QUERY_TYPE_OPTIONS.find((o) => o.value === queryType)
+const getQueryTypeLabel = queryType => {
+  const option = QUERY_TYPE_OPTIONS.find(o => o.value === queryType)
   return option ? option.label : ''
 }
 
@@ -647,7 +745,7 @@ const fetchMainTableOptions = async () => {
   }
 }
 
-const handleTableTypeChange = (val) => {
+const handleTableTypeChange = val => {
   if (val === 2) {
     fetchMainTableOptions()
   } else {
@@ -688,17 +786,17 @@ const handleReset = () => {
   fetchData()
 }
 
-const handleSizeChange = (size) => {
+const handleSizeChange = size => {
   pagination.pageSize = size
   fetchData()
 }
 
-const handleCurrentChange = (current) => {
+const handleCurrentChange = current => {
   pagination.current = current
   fetchData()
 }
 
-const handleSelectionChange = (rows) => {
+const handleSelectionChange = rows => {
   selectedRows.value = rows
 }
 
@@ -733,7 +831,7 @@ const openAddDialog = () => {
   dialogVisible.value = true
 }
 
-const openEditDialog = async (row) => {
+const openEditDialog = async row => {
   dialogTitle.value = '编辑数据表'
   isEdit.value = true
   resetFormData()
@@ -801,7 +899,7 @@ const handleSubmit = async () => {
   }
 }
 
-const handleDelete = (row) => {
+const handleDelete = row => {
   ElMessageBox.confirm(`确定要删除数据表「${row.tableName}」吗？`, '提示', {
     type: 'warning'
   })
@@ -829,7 +927,7 @@ const handleBatchDelete = () => {
   })
     .then(async () => {
       try {
-        const ids = selectedRows.value.map((row) => row.id)
+        const ids = selectedRows.value.map(row => row.id)
         const res = await batchDeleteByIds(ids)
         if (res.success) {
           ElMessage.success('删除成功')
@@ -842,7 +940,7 @@ const handleBatchDelete = () => {
     .catch(() => {})
 }
 
-const handleSyncDb = (row) => {
+const handleSyncDb = row => {
   ElMessageBox.confirm(`确定要将数据表「${row.tableName}」同步到数据库吗？`, '提示', {
     type: 'info'
   })
@@ -860,7 +958,7 @@ const handleSyncDb = (row) => {
     .catch(() => {})
 }
 
-const handleIdTypeChange = (row) => {
+const handleIdTypeChange = row => {
   if (row.dbFieldName === 'id') {
     if (row.dbType === 'int') {
       row.dbLength = null
@@ -870,7 +968,7 @@ const handleIdTypeChange = (row) => {
   }
 }
 
-const handleFieldNameChange = (row) => {
+const handleFieldNameChange = row => {
   if (row.dbFieldName) {
     row.dbFieldNameAlias = toCamelCase(row.dbFieldName)
   }
@@ -896,11 +994,11 @@ const handleAddField = () => {
     queryType: 'none',
     controlConfig: {}
   }
-  
-  const firstSystemFieldIndex = formData.fields.findIndex(
-    (field) => SYSTEM_FIELDS.includes(field.dbFieldName)
+
+  const firstSystemFieldIndex = formData.fields.findIndex(field =>
+    SYSTEM_FIELDS.includes(field.dbFieldName)
   )
-  
+
   if (firstSystemFieldIndex === -1) {
     formData.fields.push(newField)
   } else {
@@ -908,7 +1006,7 @@ const handleAddField = () => {
   }
 }
 
-const handleDeleteField = (index) => {
+const handleDeleteField = index => {
   formData.fields.splice(index, 1)
 }
 
@@ -950,16 +1048,16 @@ const handleIndexSubmit = async () => {
   indexDialogVisible.value = false
 }
 
-const handleDeleteIndex = (index) => {
+const handleDeleteIndex = index => {
   formData.indexes.splice(index, 1)
 }
 
-const getTableTypeLabel = (tableType) => {
-  const option = TABLE_TYPE_OPTIONS.find((item) => item.value === tableType)
+const getTableTypeLabel = tableType => {
+  const option = TABLE_TYPE_OPTIONS.find(item => item.value === tableType)
   return option?.label || '-'
 }
 
-const getTableTypeTagType = (tableType) => {
+const getTableTypeTagType = tableType => {
   const typeMap = {
     0: 'info',
     1: 'primary',
@@ -968,31 +1066,31 @@ const getTableTypeTagType = (tableType) => {
   return typeMap[tableType] || 'info'
 }
 
-const getSyncStatusLabel = (isDbSynch) => {
+const getSyncStatusLabel = isDbSynch => {
   return isDbSynch === 'Y' ? '已同步' : '未同步'
 }
 
-const getSyncStatusTagType = (isDbSynch) => {
+const getSyncStatusTagType = isDbSynch => {
   return isDbSynch === 'Y' ? 'success' : 'warning'
 }
 
-const getDbTypeLabel = (dbType) => {
-  const option = DB_TYPE_OPTIONS.find((item) => item.value === dbType)
+const getDbTypeLabel = dbType => {
+  const option = DB_TYPE_OPTIONS.find(item => item.value === dbType)
   return option?.label || dbType
 }
 
-const getIndexTypeLabel = (indexType) => {
-  const option = INDEX_TYPE_OPTIONS.find((item) => item.value === indexType)
+const getIndexTypeLabel = indexType => {
+  const option = INDEX_TYPE_OPTIONS.find(item => item.value === indexType)
   return option?.label || indexType
 }
 
 // 获取数据预览链接
-const getPreviewLink = (tableId) => {
+const getPreviewLink = tableId => {
   const baseUrl = window.location.origin + window.location.pathname
   const previewPath = `/tableData/${tableId}`
   // 处理 qiankun 环境下的路径
   const currentPath = window.location.pathname
-  const segments = currentPath.split('/').filter((s) => s)
+  const segments = currentPath.split('/').filter(s => s)
   if (segments.length > 1) {
     // 如果有前缀路径（如 qiankun 主应用路径）
     return `${window.location.origin}/${segments[0]}/tableData/${tableId}`
@@ -1001,12 +1099,12 @@ const getPreviewLink = (tableId) => {
 }
 
 // 打开数据预览页面
-const openDataPreview = (row) => {
+const openDataPreview = row => {
   router.push(`/tableData/${row.id}`)
 }
 
 // 复制预览链接
-const copyPreviewLink = (row) => {
+const copyPreviewLink = row => {
   const link = getPreviewLink(row.id)
   navigator.clipboard
     .writeText(link)
@@ -1111,22 +1209,14 @@ onMounted(() => {
         <ElTableColumn label="操作" width="320" align="center" fixed="right">
           <template #default="{ row }">
             <ElButton type="primary" link size="small" @click="openDataPreview(row)">预览</ElButton>
-            <ElPopover
-              placement="bottom"
-              :width="350"
-              trigger="click"
-            >
+            <ElPopover placement="bottom" :width="350" trigger="click">
               <template #reference>
                 <ElButton type="info" link size="small">复制链接</ElButton>
               </template>
               <div class="link-popover">
                 <p class="link-label">数据预览链接：</p>
                 <div class="link-content">
-                  <ElInput
-                    :model-value="getPreviewLink(row.id)"
-                    readonly
-                    size="small"
-                  />
+                  <ElInput :model-value="getPreviewLink(row.id)" readonly size="small" />
                   <ElButton type="primary" size="small" @click="copyPreviewLink(row)">
                     复制
                   </ElButton>
@@ -1180,7 +1270,15 @@ onMounted(() => {
             {{ baseInfoExpanded ? '收起' : '展开' }}
           </ElButton>
         </div>
-        <ElForm v-show="baseInfoExpanded" ref="formRef" :model="formData" :rules="baseFormRules" label-width="70px" class="base-form" size="small">
+        <ElForm
+          v-show="baseInfoExpanded"
+          ref="formRef"
+          :model="formData"
+          :rules="baseFormRules"
+          label-width="70px"
+          class="base-form"
+          size="small"
+        >
           <div class="form-row">
             <ElFormItem label="表名" prop="tableName">
               <ElInput v-model="formData.tableName" placeholder="请输入表名" :disabled="isEdit" />
@@ -1189,7 +1287,11 @@ onMounted(() => {
               <ElInput v-model="formData.tableTxt" placeholder="请输入表说明" />
             </ElFormItem>
             <ElFormItem label="表类型" prop="tableType">
-              <ElSelect v-model="formData.tableType" placeholder="请选择表类型" @change="handleTableTypeChange">
+              <ElSelect
+                v-model="formData.tableType"
+                placeholder="请选择表类型"
+                @change="handleTableTypeChange"
+              >
                 <ElOption
                   v-for="item in TABLE_TYPE_OPTIONS"
                   :key="item.value"
@@ -1231,7 +1333,12 @@ onMounted(() => {
             <div class="section-subtitle">附表关联配置</div>
             <div class="form-row">
               <ElFormItem label="主表" prop="mainTable">
-                <ElSelect v-model="formData.mainTable" placeholder="请选择主表" filterable style="width: 100%">
+                <ElSelect
+                  v-model="formData.mainTable"
+                  placeholder="请选择主表"
+                  filterable
+                  style="width: 100%"
+                >
                   <ElOption
                     v-for="item in mainTableOptions"
                     :key="item.id"
@@ -1241,7 +1348,11 @@ onMounted(() => {
                 </ElSelect>
               </ElFormItem>
               <ElFormItem label="关联类型">
-                <ElSelect v-model="formData.relationConfig.relationType" placeholder="请选择关联类型" style="width: 100%">
+                <ElSelect
+                  v-model="formData.relationConfig.relationType"
+                  placeholder="请选择关联类型"
+                  style="width: 100%"
+                >
                   <ElOption
                     v-for="item in RELATION_TYPE_OPTIONS"
                     :key="item.value"
@@ -1253,7 +1364,11 @@ onMounted(() => {
             </div>
             <div class="form-row">
               <ElFormItem label="主表关联字段">
-                <ElSelect v-model="formData.relationConfig.mainTableField" placeholder="请选择主表关联字段" style="width: 100%">
+                <ElSelect
+                  v-model="formData.relationConfig.mainTableField"
+                  placeholder="请选择主表关联字段"
+                  style="width: 100%"
+                >
                   <ElOption
                     v-for="item in mainTableFieldOptions"
                     :key="item.value"
@@ -1263,7 +1378,11 @@ onMounted(() => {
                 </ElSelect>
               </ElFormItem>
               <ElFormItem label="附表关联字段">
-                <ElSelect v-model="formData.relationConfig.subTableField" placeholder="请选择附表关联字段" style="width: 100%">
+                <ElSelect
+                  v-model="formData.relationConfig.subTableField"
+                  placeholder="请选择附表关联字段"
+                  style="width: 100%"
+                >
                   <ElOption
                     v-for="item in subTableFieldOptions"
                     :key="item.value"
@@ -1275,7 +1394,10 @@ onMounted(() => {
             </div>
             <div class="form-row">
               <ElFormItem label="关联字段别名">
-                <ElInput v-model="formData.relationConfig.relationFieldName" placeholder="请输入关联字段别名（驼峰命名）" />
+                <ElInput
+                  v-model="formData.relationConfig.relationFieldName"
+                  placeholder="请输入关联字段别名（驼峰命名）"
+                />
               </ElFormItem>
             </div>
           </div>
@@ -1314,7 +1436,10 @@ onMounted(() => {
                     v-model="row.dbType"
                     size="small"
                     style="width: 100%"
-                    :disabled="SYSTEM_FIELDS.includes(row.dbFieldName) || ['create_by', 'update_by'].includes(row.dbFieldName)"
+                    :disabled="
+                      SYSTEM_FIELDS.includes(row.dbFieldName) ||
+                      ['create_by', 'update_by'].includes(row.dbFieldName)
+                    "
                     @change="handleIdTypeChange(row)"
                   >
                     <ElOption
@@ -1331,7 +1456,10 @@ onMounted(() => {
                   <ElInput
                     v-model="row.dbLength"
                     size="small"
-                    :disabled="SYSTEM_FIELDS.includes(row.dbFieldName) || (row.dbFieldName === 'id' && row.dbType === 'int')"
+                    :disabled="
+                      SYSTEM_FIELDS.includes(row.dbFieldName) ||
+                      (row.dbFieldName === 'id' && row.dbType === 'int')
+                    "
                   />
                 </template>
               </ElTableColumn>
@@ -1345,7 +1473,9 @@ onMounted(() => {
                   <ElInput
                     v-model="row.dbPointLength"
                     size="small"
-                    :disabled="SYSTEM_FIELDS.includes(row.dbFieldName) || !isAllowDecimal(row.dbType)"
+                    :disabled="
+                      SYSTEM_FIELDS.includes(row.dbFieldName) || !isAllowDecimal(row.dbType)
+                    "
                   />
                 </template>
               </ElTableColumn>
@@ -1419,7 +1549,12 @@ onMounted(() => {
               </ElTableColumn>
               <ElTableColumn label="操作" width="120" align="center">
                 <template #default="{ row, $index }">
-                  <ElButton type="primary" link size="small" @click="openEditIndexDialog(row, $index)">
+                  <ElButton
+                    type="primary"
+                    link
+                    size="small"
+                    @click="openEditIndexDialog(row, $index)"
+                  >
                     编辑
                   </ElButton>
                   <ElButton type="danger" link size="small" @click="handleDeleteIndex($index)">
@@ -1450,7 +1585,11 @@ onMounted(() => {
           <ElInput v-model="indexFormData.indexName" placeholder="请输入索引名称" />
         </ElFormItem>
         <ElFormItem label="索引类型" prop="indexType">
-          <ElSelect v-model="indexFormData.indexType" placeholder="请选择索引类型" style="width: 100%">
+          <ElSelect
+            v-model="indexFormData.indexType"
+            placeholder="请选择索引类型"
+            style="width: 100%"
+          >
             <ElOption
               v-for="item in INDEX_TYPE_OPTIONS"
               :key="item.value"
@@ -1489,50 +1628,12 @@ onMounted(() => {
       :close-on-click-modal="false"
     >
       <ElTabs v-model="fieldConfigActiveTab" type="card" class="field-config-tabs">
-        <ElTabPane label="显示与布局" name="display">
+        <ElTabPane label="控件配置" name="control">
           <ElForm ref="fieldConfigFormRef" :model="fieldConfigFormData" label-width="100px">
-            <div class="permission-grid">
-              <ElFormItem label="列表显示">
-                <ElSwitch
-                  v-model="fieldConfigFormData.isShowList"
-                  active-text="是"
-                  inactive-text="否"
-                />
-              </ElFormItem>
-              <ElFormItem label="表单显示">
-                <ElSwitch
-                  v-model="fieldConfigFormData.isShowForm"
-                  active-text="是"
-                  inactive-text="否"
-                />
-              </ElFormItem>
-              <ElFormItem label="编辑可改">
-                <ElSwitch
-                  v-model="fieldConfigFormData.isEditable"
-                  active-text="是"
-                  inactive-text="否"
-                />
-              </ElFormItem>
-              <ElFormItem label="新增可录">
-                <ElSwitch
-                  v-model="fieldConfigFormData.isAddable"
-                  active-text="是"
-                  inactive-text="否"
-                />
-              </ElFormItem>
-              <ElFormItem label="新增显示">
-                <ElSwitch
-                  v-model="fieldConfigFormData.isShowInAdd"
-                  active-text="是"
-                  inactive-text="否"
-                />
-              </ElFormItem>
-            </div>
-
-            <ElFormItem label="布局方式">
-              <ElSelect v-model="fieldConfigFormData.layoutType" style="width: 100%">
+            <ElFormItem label="控件类型">
+              <ElSelect v-model="fieldConfigFormData.controlType" style="width: 100%">
                 <ElOption
-                  v-for="item in LAYOUT_TYPE_OPTIONS"
+                  v-for="item in availableControlTypes"
                   :key="item.value"
                   :label="item.label"
                   :value="item.value"
@@ -1543,22 +1644,7 @@ onMounted(() => {
             <ElFormItem label="查询方式">
               <ElSelect v-model="fieldConfigFormData.queryType" style="width: 100%">
                 <ElOption
-                  v-for="item in QUERY_TYPE_OPTIONS"
-                  :key="item.value"
-                  :label="item.label"
-                  :value="item.value"
-                />
-              </ElSelect>
-            </ElFormItem>
-          </ElForm>
-        </ElTabPane>
-
-        <ElTabPane label="控件配置" name="control">
-          <ElForm ref="fieldConfigFormRef" :model="fieldConfigFormData" label-width="100px">
-            <ElFormItem label="控件类型">
-              <ElSelect v-model="fieldConfigFormData.controlType" style="width: 100%">
-                <ElOption
-                  v-for="item in availableControlTypes"
+                  v-for="item in availableQueryTypes"
                   :key="item.value"
                   :label="item.label"
                   :value="item.value"
@@ -1640,7 +1726,10 @@ onMounted(() => {
 
             <template v-if="needDateFormatConfig">
               <ElFormItem label="日期格式">
-                <ElSelect v-model="fieldConfigFormData.controlConfig.dateFormat" style="width: 100%">
+                <ElSelect
+                  v-model="fieldConfigFormData.controlConfig.dateFormat"
+                  style="width: 100%"
+                >
                   <ElOption label="YYYY-MM-DD" value="YYYY-MM-DD" />
                   <ElOption label="YYYY-MM-DD HH:mm:ss" value="YYYY-MM-DD HH:mm:ss" />
                   <ElOption label="YYYY/MM/DD" value="YYYY/MM/DD" />
@@ -1696,6 +1785,73 @@ onMounted(() => {
           </ElForm>
         </ElTabPane>
 
+        <ElTabPane label="显示与布局" name="display">
+          <ElForm ref="fieldConfigFormRef" :model="fieldConfigFormData" label-width="100px">
+            <div class="permission-grid">
+              <ElFormItem label="列表显示">
+                <ElSwitch
+                  v-model="fieldConfigFormData.isShowList"
+                  active-text="是"
+                  inactive-text="否"
+                />
+              </ElFormItem>
+              <ElFormItem label="表单显示">
+                <ElSwitch
+                  v-model="fieldConfigFormData.isShowForm"
+                  active-text="是"
+                  inactive-text="否"
+                />
+              </ElFormItem>
+              <ElFormItem label="编辑可改">
+                <ElSwitch
+                  v-model="fieldConfigFormData.isEditable"
+                  active-text="是"
+                  inactive-text="否"
+                />
+              </ElFormItem>
+              <ElFormItem label="新增可录">
+                <ElSwitch
+                  v-model="fieldConfigFormData.isAddable"
+                  active-text="是"
+                  inactive-text="否"
+                />
+              </ElFormItem>
+              <ElFormItem label="新增显示">
+                <ElSwitch
+                  v-model="fieldConfigFormData.isShowInAdd"
+                  active-text="是"
+                  inactive-text="否"
+                />
+              </ElFormItem>
+            </div>
+
+            <ElFormItem label="布局方式">
+              <ElSelect v-model="fieldConfigFormData.layoutType" style="width: 100%">
+                <ElOption
+                  v-for="item in LAYOUT_TYPE_OPTIONS"
+                  :key="item.value"
+                  :label="item.label"
+                  :value="item.value"
+                />
+              </ElSelect>
+            </ElFormItem>
+
+            <template v-if="fieldConfigFormData.controlType === 'password'">
+              <ElDivider>敏感字段配置</ElDivider>
+              <ElFormItem label="敏感字段">
+                <ElSwitch
+                  v-model="fieldConfigFormData.isSensitiveField"
+                  active-text="是"
+                  inactive-text="否"
+                />
+                <div class="form-tip">
+                  开启后：列表不展示该字段，接口返回数据时也不会返回该字段值
+                </div>
+              </ElFormItem>
+            </template>
+          </ElForm>
+        </ElTabPane>
+
         <ElTabPane label="校验规则" name="validation">
           <ElForm ref="fieldConfigFormRef" :model="fieldConfigFormData" label-width="100px">
             <ElFormItem label="必填校验">
@@ -1713,15 +1869,17 @@ onMounted(() => {
                   placeholder="选择预设校验规则"
                   clearable
                   style="width: 100%"
-                  @change="(val) => {
-                    const rule = PRESET_VALIDATION_RULES.find(r => r.value === val)
-                    if (rule) {
-                      fieldConfigFormData.validationRules.pattern = rule.pattern
-                      if (!fieldConfigFormData.validationRules.message) {
-                        fieldConfigFormData.validationRules.message = rule.message
+                  @change="
+                    val => {
+                      const rule = PRESET_VALIDATION_RULES.find(r => r.value === val)
+                      if (rule) {
+                        fieldConfigFormData.validationRules.pattern = rule.pattern
+                        if (!fieldConfigFormData.validationRules.message) {
+                          fieldConfigFormData.validationRules.message = rule.message
+                        }
                       }
                     }
-                  }"
+                  "
                 >
                   <ElOption
                     v-for="item in PRESET_VALIDATION_RULES"
@@ -2040,5 +2198,12 @@ onMounted(() => {
 
 .validation-row :deep(.el-form-item) {
   margin-bottom: 12px;
+}
+
+/* 表单提示文字样式 */
+.form-tip {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #909399;
 }
 </style>

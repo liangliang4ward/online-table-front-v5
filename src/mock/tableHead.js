@@ -126,9 +126,9 @@ const getDefaultFields = () => [
 ]
 
 // 获取数据源名称
-const getDatasourceName = (datasourceId) => {
+const getDatasourceName = datasourceId => {
   const datasources = getAllDatasources()
-  const ds = datasources.find((d) => d.id === datasourceId)
+  const ds = datasources.find(d => d.id === datasourceId)
   return ds?.datasourceName || '-'
 }
 
@@ -697,32 +697,32 @@ const loadTableHeads = () => {
   return [...defaultData]
 }
 
-const saveTableHeads = (tableHeads) => {
+const saveTableHeads = tableHeads => {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(tableHeads))
 }
 
 // 分页查询
 export function pageQuery(params) {
-  return new Promise((resolve) => {
+  return new Promise(resolve => {
     setTimeout(() => {
-      let tableHeads = loadTableHeads()
+      const tableHeads = loadTableHeads()
       let filtered = tableHeads
 
       // 按表名模糊查询
       if (params.tableName) {
-        filtered = filtered.filter((t) =>
+        filtered = filtered.filter(t =>
           t.tableName.toLowerCase().includes(params.tableName.toLowerCase())
         )
       }
 
       // 按表类型查询
       if (params.tableType !== null && params.tableType !== undefined) {
-        filtered = filtered.filter((t) => t.tableType === params.tableType)
+        filtered = filtered.filter(t => t.tableType === params.tableType)
       }
 
       // 按同步状态查询
       if (params.isDbSynch) {
-        filtered = filtered.filter((t) => t.isDbSynch === params.isDbSynch)
+        filtered = filtered.filter(t => t.isDbSynch === params.isDbSynch)
       }
 
       // 分页
@@ -731,7 +731,7 @@ export function pageQuery(params) {
       const { list, total } = paginate(filtered, pageNo, pageSize)
 
       // 补充数据源名称
-      const listWithDatasourceName = list.map((item) => ({
+      const listWithDatasourceName = list.map(item => ({
         ...item,
         datasourceName: getDatasourceName(item.datasourceId)
       }))
@@ -743,10 +743,10 @@ export function pageQuery(params) {
 
 // 根据ID查询
 export function queryById(id) {
-  return new Promise((resolve) => {
+  return new Promise(resolve => {
     setTimeout(() => {
       const tableHeads = loadTableHeads()
-      const tableHead = tableHeads.find((t) => t.id === id)
+      const tableHead = tableHeads.find(t => t.id === id)
       if (tableHead) {
         tableHead.datasourceName = getDatasourceName(tableHead.datasourceId)
       }
@@ -757,7 +757,7 @@ export function queryById(id) {
 
 // 新增
 export function insert(data) {
-  return new Promise((resolve) => {
+  return new Promise(resolve => {
     setTimeout(() => {
       const tableHeads = loadTableHeads()
       const newTableHead = {
@@ -777,10 +777,10 @@ export function insert(data) {
 
 // 更新
 export function update(data) {
-  return new Promise((resolve) => {
+  return new Promise(resolve => {
     setTimeout(() => {
       const tableHeads = loadTableHeads()
-      const index = tableHeads.findIndex((t) => t.id === data.id)
+      const index = tableHeads.findIndex(t => t.id === data.id)
       if (index !== -1) {
         tableHeads[index] = {
           ...tableHeads[index],
@@ -797,10 +797,10 @@ export function update(data) {
 
 // 根据ID删除
 export function deleteById(id) {
-  return new Promise((resolve) => {
+  return new Promise(resolve => {
     setTimeout(() => {
       const tableHeads = loadTableHeads()
-      const filtered = tableHeads.filter((t) => t.id !== id)
+      const filtered = tableHeads.filter(t => t.id !== id)
       saveTableHeads(filtered)
       resolve(successResponse(true))
     }, 150)
@@ -809,10 +809,10 @@ export function deleteById(id) {
 
 // 批量删除
 export function batchDeleteByIds(ids) {
-  return new Promise((resolve) => {
+  return new Promise(resolve => {
     setTimeout(() => {
       const tableHeads = loadTableHeads()
-      const filtered = tableHeads.filter((t) => !ids.includes(t.id))
+      const filtered = tableHeads.filter(t => !ids.includes(t.id))
       saveTableHeads(filtered)
       resolve(successResponse(true))
     }, 150)
@@ -821,10 +821,10 @@ export function batchDeleteByIds(ids) {
 
 // 同步到数据库
 export function syncDb(tableId, syncType) {
-  return new Promise((resolve) => {
+  return new Promise(resolve => {
     setTimeout(() => {
       const tableHeads = loadTableHeads()
-      const index = tableHeads.findIndex((t) => t.id === tableId)
+      const index = tableHeads.findIndex(t => t.id === tableId)
       if (index !== -1) {
         tableHeads[index].isDbSynch = 'Y'
         tableHeads[index].updateTime = getCurrentTime()
@@ -843,7 +843,7 @@ export function getAllTableHeads() {
 // 根据ID获取表配置
 export function getTableConfigById(tableId) {
   const tableHeads = loadTableHeads()
-  return tableHeads.find((t) => t.id === tableId)
+  return tableHeads.find(t => t.id === tableId)
 }
 
 export default {

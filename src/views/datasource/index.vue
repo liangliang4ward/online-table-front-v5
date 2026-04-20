@@ -18,9 +18,7 @@ import {
 } from 'element-plus'
 import { pageQuery, insert, update, deleteById, batchDeleteByIds } from '@/mock/datasource'
 
-const DB_TYPE_OPTIONS = [
-  { label: 'MySQL', value: 'mysql' }
-]
+const DB_TYPE_OPTIONS = [{ label: 'MySQL', value: 'mysql' }]
 
 const loading = ref(false)
 const tableData = ref([])
@@ -85,17 +83,17 @@ const handleReset = () => {
   fetchData()
 }
 
-const handleSizeChange = (size) => {
+const handleSizeChange = size => {
   pagination.pageSize = size
   fetchData()
 }
 
-const handleCurrentChange = (current) => {
+const handleCurrentChange = current => {
   pagination.current = current
   fetchData()
 }
 
-const handleSelectionChange = (rows) => {
+const handleSelectionChange = rows => {
   selectedRows.value = rows
 }
 
@@ -105,7 +103,7 @@ const openAddDialog = () => {
   dialogVisible.value = true
 }
 
-const openEditDialog = async (row) => {
+const openEditDialog = async row => {
   dialogTitle.value = '编辑数据源'
   resetForm()
   Object.assign(formData, {
@@ -150,20 +148,22 @@ const handleSubmit = async () => {
   }
 }
 
-const handleDelete = (row) => {
+const handleDelete = row => {
   ElMessageBox.confirm(`确定要删除数据源「${row.datasourceName}」吗？`, '提示', {
     type: 'warning'
-  }).then(async () => {
-    try {
-      const res = await deleteById(row.id)
-      if (res.success) {
-        ElMessage.success('删除成功')
-        fetchData()
+  })
+    .then(async () => {
+      try {
+        const res = await deleteById(row.id)
+        if (res.success) {
+          ElMessage.success('删除成功')
+          fetchData()
+        }
+      } catch (error) {
+        console.error('删除失败:', error)
       }
-    } catch (error) {
-      console.error('删除失败:', error)
-    }
-  }).catch(() => {})
+    })
+    .catch(() => {})
 }
 
 const handleBatchDelete = () => {
@@ -173,27 +173,29 @@ const handleBatchDelete = () => {
   }
   ElMessageBox.confirm(`确定要删除选中的 ${selectedRows.value.length} 条数据吗？`, '提示', {
     type: 'warning'
-  }).then(async () => {
-    try {
-      const ids = selectedRows.value.map((row) => row.id)
-      const res = await batchDeleteByIds(ids)
-      if (res.success) {
-        ElMessage.success('删除成功')
-        fetchData()
+  })
+    .then(async () => {
+      try {
+        const ids = selectedRows.value.map(row => row.id)
+        const res = await batchDeleteByIds(ids)
+        if (res.success) {
+          ElMessage.success('删除成功')
+          fetchData()
+        }
+      } catch (error) {
+        console.error('批量删除失败:', error)
       }
-    } catch (error) {
-      console.error('批量删除失败:', error)
-    }
-  }).catch(() => {})
+    })
+    .catch(() => {})
 }
 
-const getDbTypeLabel = (dbType) => {
+const getDbTypeLabel = dbType => {
   if (!dbType) return '-'
-  const option = DB_TYPE_OPTIONS.find((item) => item.value === dbType)
+  const option = DB_TYPE_OPTIONS.find(item => item.value === dbType)
   return option?.label || dbType
 }
 
-const getDbTypeTagType = (dbType) => {
+const getDbTypeTagType = dbType => {
   if (!dbType) return 'info'
   return 'primary'
 }

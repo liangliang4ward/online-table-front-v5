@@ -30,12 +30,21 @@ import {
 } from 'element-plus'
 import RichTextEditor from '@/components/RichTextEditor.vue'
 import { getAllTableHeads, getTableConfigById } from '@/mock/tableHead'
-import { pageQuery, queryById, insert, update, deleteById, batchDeleteByIds, queryByMainTableId, deleteByMainTableId } from '@/mock/tableData'
+import {
+  pageQuery,
+  queryById,
+  insert,
+  update,
+  deleteById,
+  batchDeleteByIds,
+  queryByMainTableId,
+  deleteByMainTableId
+} from '@/mock/tableData'
 
 const route = useRoute()
 
 // 根据字段配置获取控件类型
-const getControlType = (field) => {
+const getControlType = field => {
   if (field.controlType) {
     return field.controlType
   }
@@ -83,7 +92,7 @@ const STATUS_OPTIONS = [
 ]
 
 // 获取枚举选项
-const getEnumOptions = (fieldName) => {
+const getEnumOptions = fieldName => {
   if (['order_status', 'orderStatus'].includes(fieldName)) {
     return ORDER_STATUS_OPTIONS
   }
@@ -116,15 +125,15 @@ const queryFormExpanded = ref(true)
 
 // 重置查询参数
 const resetQueryParams = () => {
-  Object.keys(queryParams).forEach((key) => {
+  Object.keys(queryParams).forEach(key => {
     delete queryParams[key]
   })
-  
+
   if (selectedTableConfig.value?.fields) {
-    selectedTableConfig.value.fields.forEach((field) => {
+    selectedTableConfig.value.fields.forEach(field => {
       if (field.queryType && field.queryType !== 'none') {
         const fieldName = field.dbFieldNameAlias || field.dbFieldName
-        
+
         if (field.queryType === 'between') {
           queryParams[`${fieldName}Start`] = null
           queryParams[`${fieldName}End`] = null
@@ -158,24 +167,24 @@ const handleReset = () => {
 }
 
 // 获取字段的选项配置
-const getFieldOptions = (field) => {
+const getFieldOptions = field => {
   if (!field.controlConfig) return []
-  
+
   const { dataSourceType, options, dictionaryCode } = field.controlConfig
-  
+
   if (dataSourceType === 'static' && options && options.length > 0) {
-    return options.map((opt) => ({
+    return options.map(opt => ({
       label: opt.label,
       value: opt.value
     }))
   }
-  
+
   // 这里可以扩展字典和接口的情况
   return []
 }
 
 // 获取查询类型标签
-const getQueryTypeLabel = (queryType) => {
+const getQueryTypeLabel = queryType => {
   const map = {
     eq: '等于',
     like: '模糊',
@@ -246,7 +255,7 @@ const formColumns = computed(() => {
 const dialogWidth = computed(() => {
   const columns = formColumns.value
   const hasSubTables = isMainTable.value && relatedSubTables.value.length > 0
-  
+
   if (columns === 4) {
     return hasSubTables ? '1400px' : '1200px'
   }
@@ -258,7 +267,7 @@ const relatedSubTables = computed(() => {
   if (!selectedTableConfig.value || !isMainTable.value) return []
   const tableName = selectedTableConfig.value.tableName
   const allTables = getAllTableHeads()
-  return allTables.filter((t) => t.tableType === 2 && t.mainTable === tableName)
+  return allTables.filter(t => t.tableType === 2 && t.mainTable === tableName)
 })
 
 // 附表数据（主表新增时使用）
@@ -274,22 +283,22 @@ const getSubTableList = () => {
   const isMain = selectedTableConfig.value.tableType === 1
   if (!isMain) return []
   const allTables = getAllTableHeads()
-  return allTables.filter((t) => t.tableType === 2 && t.mainTable === tableName)
+  return allTables.filter(t => t.tableType === 2 && t.mainTable === tableName)
 }
 
 // 初始化附表数据
 // mainTableId: 主表ID，用于编辑/详情模式加载已有数据
 const initSubTableData = async (mainTableId = null) => {
-  Object.keys(subTableDataMap).forEach((key) => {
+  Object.keys(subTableDataMap).forEach(key => {
     delete subTableDataMap[key]
   })
-  
+
   // 直接获取附表列表，不依赖计算属性
   const subTables = getSubTableList()
   if (subTables.length > 0) {
     for (const subTable of subTables) {
       subTableDataMap[subTable.id] = []
-      
+
       if (mainTableId) {
         // 编辑模式：从数据库加载已有数据
         const relationFieldName = subTable.relationConfig?.relationFieldName || 'mainTableId'
@@ -312,35 +321,35 @@ const initSubTableData = async (mainTableId = null) => {
 }
 
 // 判断附表是否是一对多关系
-const isOneToMany = (subTable) => {
+const isOneToMany = subTable => {
   return subTable?.relationConfig?.relationType === 'one_to_many'
 }
 
 // 判断附表是否是一对一关系
-const isOneToOne = (subTable) => {
+const isOneToOne = subTable => {
   return subTable?.relationConfig?.relationType === 'one_to_one'
 }
 
 // 获取附表的可编辑字段
-const getSubTableFormFields = (subTable) => {
+const getSubTableFormFields = subTable => {
   if (!subTable?.fields) return []
   return subTable.fields.filter(
-    (f) => f.isShowForm && f.dbFieldName !== subTable.relationConfig?.subTableField
+    f => f.isShowForm && f.dbFieldName !== subTable.relationConfig?.subTableField
   )
 }
 
 // 创建空的表数据行
-const createEmptyTableRow = (subTable) => {
+const createEmptyTableRow = subTable => {
   if (!subTable?.fields) return {}
-  
+
   const newRow = {}
-  subTable.fields.forEach((field) => {
+  subTable.fields.forEach(field => {
     if (field.isShowForm) {
       const fieldName = field.dbFieldNameAlias || field.dbFieldName
-      
+
       // 根据控件类型设置默认值
       const controlType = getControlType(field)
-      
+
       // 文件上传类型默认为空数组
       if (controlType === 'upload') {
         newRow[fieldName] = []
@@ -350,7 +359,11 @@ const createEmptyTableRow = (subTable) => {
         newRow[fieldName] = []
       }
       // 设置默认值
-      else if (field.dbDefaultVal !== null && field.dbDefaultVal !== undefined && field.dbDefaultVal !== '') {
+      else if (
+        field.dbDefaultVal !== null &&
+        field.dbDefaultVal !== undefined &&
+        field.dbDefaultVal !== ''
+      ) {
         if (['int', 'bigint', 'tinyint'].includes(field.dbType)) {
           newRow[fieldName] = parseInt(field.dbDefaultVal) || 0
         } else if (field.dbType === 'decimal') {
@@ -369,20 +382,20 @@ const createEmptyTableRow = (subTable) => {
       }
     }
   })
-  
+
   return newRow
 }
 
 // 添加附表数据行
-const addSubTableRow = (subTableId) => {
+const addSubTableRow = subTableId => {
   if (!subTableDataMap[subTableId]) {
     subTableDataMap[subTableId] = []
   }
-  
+
   const subTables = getSubTableList()
-  const subTable = subTables.find((t) => t.id === subTableId)
+  const subTable = subTables.find(t => t.id === subTableId)
   if (!subTable) return
-  
+
   const newRow = createEmptyTableRow(subTable)
   subTableDataMap[subTableId].push(newRow)
 }
@@ -395,7 +408,7 @@ const removeSubTableRow = (subTableId, index) => {
 }
 
 // 监听表选择变化
-watch(selectedTableId, (newVal) => {
+watch(selectedTableId, newVal => {
   if (newVal) {
     selectedTableConfig.value = getTableConfigById(newVal)
     // 重置查询参数
@@ -412,19 +425,21 @@ watch(selectedTableId, (newVal) => {
 // 获取可显示的列表字段
 const listFields = computed(() => {
   if (!selectedTableConfig.value?.fields) return []
-  return selectedTableConfig.value.fields.filter((f) => f.isShowList !== false)
+  return selectedTableConfig.value.fields.filter(f => f.isShowList !== false)
 })
 
 // 获取新增时的表单字段
 const addFormFields = computed(() => {
   if (!selectedTableConfig.value?.fields) return []
-  return selectedTableConfig.value.fields.filter((f) => f.isShowForm !== false && f.isShowInAdd !== false)
+  return selectedTableConfig.value.fields.filter(
+    f => f.isShowForm !== false && f.isShowInAdd !== false
+  )
 })
 
 // 获取编辑时的表单字段
 const editFormFields = computed(() => {
   if (!selectedTableConfig.value?.fields) return []
-  return selectedTableConfig.value.fields.filter((f) => f.isShowForm !== false)
+  return selectedTableConfig.value.fields.filter(f => f.isShowForm !== false)
 })
 
 // 获取当前模式的表单字段
@@ -435,7 +450,7 @@ const formFields = computed(() => {
 // 获取可查询的字段
 const queryFields = computed(() => {
   if (!selectedTableConfig.value?.fields) return []
-  return selectedTableConfig.value.fields.filter((f) => f.queryType && f.queryType !== 'none')
+  return selectedTableConfig.value.fields.filter(f => f.queryType && f.queryType !== 'none')
 })
 
 // 加载数据表列表
@@ -456,9 +471,14 @@ const fetchData = async () => {
   try {
     // 构建查询参数
     const searchParams = {}
-    Object.keys(queryParams).forEach((key) => {
+    Object.keys(queryParams).forEach(key => {
       const value = queryParams[key]
-      if (value !== null && value !== undefined && value !== '' && (Array.isArray(value) ? value.length > 0 : true)) {
+      if (
+        value !== null &&
+        value !== undefined &&
+        value !== '' &&
+        (Array.isArray(value) ? value.length > 0 : true)
+      ) {
         searchParams[key] = value
       }
     })
@@ -481,17 +501,17 @@ const fetchData = async () => {
 }
 
 // 分页处理
-const handleSizeChange = (size) => {
+const handleSizeChange = size => {
   pagination.pageSize = size
   fetchData()
 }
 
-const handleCurrentChange = (current) => {
+const handleCurrentChange = current => {
   pagination.current = current
   fetchData()
 }
 
-const handleSelectionChange = (rows) => {
+const handleSelectionChange = rows => {
   selectedRows.value = rows
 }
 
@@ -500,29 +520,29 @@ const getFieldItemStyle = (field, index, fields, customColumns = null) => {
   const controlType = getControlType(field)
   const layoutType = field.layoutType || 'default'
   const columns = customColumns || formColumns.value
-  
+
   const style = {}
-  
+
   // 富文本或单独一行：跨所有列
   if (controlType === 'richText' || layoutType === 'fullRow') {
     style.gridColumn = `span ${columns}`
   }
-  
+
   // 换行处理：从新行开始
   // CSS Grid 中，设置 gridColumnStart: '1' 会让元素从第一列开始
   // 如果当前位置不在第一列，就会自动换到下一行
   if (layoutType === 'newLine') {
     style.gridColumnStart = '1'
   }
-  
+
   return style
 }
 
 // 获取字段的类名
-const getFieldItemClass = (field) => {
+const getFieldItemClass = field => {
   const controlType = getControlType(field)
   const layoutType = field.layoutType || 'default'
-  
+
   const classes = []
   if (controlType === 'richText' || layoutType === 'fullRow') {
     classes.push('form-item-full')
@@ -530,15 +550,15 @@ const getFieldItemClass = (field) => {
   if (layoutType === 'newLine') {
     classes.push('form-item-newline')
   }
-  
+
   return classes
 }
 
 // 检查字段是否可编辑
-const isFieldEditable = (field) => {
+const isFieldEditable = field => {
   // 如果是只读字段，不可编辑
   if (field.isReadOnly) return false
-  
+
   // 根据模式判断
   if (isEdit.value) {
     // 编辑模式：检查 isEditable
@@ -550,7 +570,7 @@ const isFieldEditable = (field) => {
 }
 
 // 获取字段的最大长度（优先级：validationRules.maxLength > dbLength）
-const getFieldMaxLength = (field) => {
+const getFieldMaxLength = field => {
   const validationRules = field.validationRules || {}
   // 优先使用校验规则配置的最大长度
   if (validationRules.maxLength !== null && validationRules.maxLength !== undefined) {
@@ -564,18 +584,22 @@ const getFieldMaxLength = (field) => {
 }
 
 // 根据字段配置生成校验规则
-const buildFieldRules = (field) => {
+const buildFieldRules = field => {
   const rules = []
   const fieldName = field.dbFieldTxt || field.dbFieldName
   const validationRules = field.validationRules || {}
 
   // 必填校验（优先级：validationRules.required > fieldMustInput > dbIsNull）
-  const isRequired = validationRules.required === true || 
-                    (field.fieldMustInput === '1' && !field.dbIsNull)
-  
+  const isRequired =
+    validationRules.required === true || (field.fieldMustInput === '1' && !field.dbIsNull)
+
   if (isRequired) {
     const controlType = getControlType(field)
-    if (controlType === 'selectMultiple' || controlType === 'checkbox' || controlType === 'upload') {
+    if (
+      controlType === 'selectMultiple' ||
+      controlType === 'checkbox' ||
+      controlType === 'upload'
+    ) {
       rules.push({
         required: true,
         message: `请选择${fieldName}`,
@@ -650,21 +674,21 @@ const buildFieldRules = (field) => {
 
 // 重置表单
 const resetForm = () => {
-  Object.keys(formData).forEach((key) => {
+  Object.keys(formData).forEach(key => {
     delete formData[key]
   })
-  Object.keys(formRules).forEach((key) => {
+  Object.keys(formRules).forEach(key => {
     delete formRules[key]
   })
 
   // 根据表配置初始化表单数据和规则
   if (selectedTableConfig.value?.fields) {
-    selectedTableConfig.value.fields.forEach((field) => {
+    selectedTableConfig.value.fields.forEach(field => {
       const fieldName = field.dbFieldNameAlias || field.dbFieldName
-      
+
       // 根据控件类型设置默认值
       const controlType = getControlType(field)
-      
+
       // 文件上传类型默认为空数组
       if (controlType === 'upload') {
         formData[fieldName] = []
@@ -674,7 +698,11 @@ const resetForm = () => {
         formData[fieldName] = []
       }
       // 设置默认值
-      else if (field.dbDefaultVal !== null && field.dbDefaultVal !== undefined && field.dbDefaultVal !== '') {
+      else if (
+        field.dbDefaultVal !== null &&
+        field.dbDefaultVal !== undefined &&
+        field.dbDefaultVal !== ''
+      ) {
         if (['int', 'bigint', 'tinyint'].includes(field.dbType)) {
           formData[fieldName] = parseInt(field.dbDefaultVal) || 0
         } else if (field.dbType === 'decimal') {
@@ -714,7 +742,7 @@ const openAddDialog = () => {
 }
 
 // 打开编辑弹窗
-const openEditDialog = async (row) => {
+const openEditDialog = async row => {
   dialogTitle.value = '编辑数据'
   isEdit.value = true
   resetForm()
@@ -736,7 +764,7 @@ const openEditDialog = async (row) => {
 }
 
 // 打开详情弹窗
-const openDetailDialog = async (row) => {
+const openDetailDialog = async row => {
   try {
     const res = await queryById(selectedTableId.value, row.id)
     if (res.success && res.data) {
@@ -753,14 +781,14 @@ const openDetailDialog = async (row) => {
 // 初始化详情模式下的附表数据
 // mainTableId: 主表ID，用于加载已有数据
 const initDetailSubTableData = async (mainTableId = null) => {
-  Object.keys(detailSubTableDataMap).forEach((key) => {
+  Object.keys(detailSubTableDataMap).forEach(key => {
     delete detailSubTableDataMap[key]
   })
-  
+
   if (isMainTable.value && relatedSubTables.value.length > 0) {
     for (const subTable of relatedSubTables.value) {
       detailSubTableDataMap[subTable.id] = []
-      
+
       if (mainTableId) {
         // 从数据库加载已有数据
         const relationFieldName = subTable.relationConfig?.relationFieldName || 'mainTableId'
@@ -783,9 +811,9 @@ const initDetailSubTableData = async (mainTableId = null) => {
 }
 
 // 处理提交数据中的日期格式
-const processSubmitData = (data) => {
+const processSubmitData = data => {
   const result = { ...data }
-  Object.keys(result).forEach((key) => {
+  Object.keys(result).forEach(key => {
     if (result[key] instanceof Date) {
       const date = result[key]
       const year = date.getFullYear()
@@ -815,28 +843,28 @@ const handleSubmit = async () => {
         // 如果是主表且有关联附表，更新附表数据
         if (isMainTable.value && relatedSubTables.value.length > 0) {
           const mainTableId = submitData.id
-          
+
           // 遍历所有附表，先删除旧数据，再插入新数据
           for (const subTable of relatedSubTables.value) {
             const relationFieldName = subTable.relationConfig?.relationFieldName || 'mainTableId'
-            
+
             // 1. 删除旧的附表数据
             await deleteByMainTableId(subTable.id, mainTableId, relationFieldName)
-            
+
             // 2. 插入新的附表数据
             const subTableDataList = subTableDataMap[subTable.id] || []
             for (const subData of subTableDataList) {
               const processedSubData = processSubmitData(subData)
-              
+
               // 设置关联字段
               processedSubData[relationFieldName] = mainTableId
-              
+
               // 保存附表数据
               await insert(subTable.id, processedSubData)
             }
           }
         }
-        
+
         ElMessage.success('更新成功')
         dialogVisible.value = false
         fetchData()
@@ -876,13 +904,14 @@ const handleSubmit = async () => {
             // 遍历所有附表，保存附表数据
             for (const subTable of relatedSubTables.value) {
               const subTableDataList = subTableDataMap[subTable.id] || []
-              
+
               for (const subData of subTableDataList) {
                 const processedSubData = processSubmitData(subData)
-                
+
                 // 设置关联字段
                 if (subTable.relationConfig) {
-                  const relationFieldName = subTable.relationConfig.relationFieldName || 'mainTableId'
+                  const relationFieldName =
+                    subTable.relationConfig.relationFieldName || 'mainTableId'
                   processedSubData[relationFieldName] = mainTableId
                 }
 
@@ -905,7 +934,7 @@ const handleSubmit = async () => {
 }
 
 // 删除
-const handleDelete = (row) => {
+const handleDelete = row => {
   ElMessageBox.confirm('确定要删除该条数据吗？', '提示', {
     type: 'warning'
   })
@@ -934,7 +963,7 @@ const handleBatchDelete = () => {
   })
     .then(async () => {
       try {
-        const ids = selectedRows.value.map((row) => row.id)
+        const ids = selectedRows.value.map(row => row.id)
         const res = await batchDeleteByIds(selectedTableId.value, ids)
         if (res.success) {
           ElMessage.success('删除成功')
@@ -950,11 +979,11 @@ const handleBatchDelete = () => {
 // 格式化显示值
 const formatValue = (value, field) => {
   if (value === null || value === undefined) return '-'
-  
+
   // 处理状态枚举
   const enumOptions = getEnumOptions(field?.dbFieldName)
   if (enumOptions) {
-    const option = enumOptions.find((o) => o.value === value)
+    const option = enumOptions.find(o => o.value === value)
     return option?.label || value
   }
 
@@ -985,24 +1014,24 @@ const getStatusTagType = (value, field) => {
 }
 
 // 获取字段标签
-const getFieldLabel = (fieldName) => {
+const getFieldLabel = fieldName => {
   if (!selectedTableConfig.value?.fields) return fieldName
   const field = selectedTableConfig.value.fields.find(
-    (f) => f.dbFieldName === fieldName || f.dbFieldNameAlias === fieldName
+    f => f.dbFieldName === fieldName || f.dbFieldNameAlias === fieldName
   )
   return field?.dbFieldTxt || fieldName
 }
 
 onMounted(() => {
   fetchTableHeads()
-  
+
   // 检查路由参数，如果有 tableId 参数，自动选择该表
   const tableIdFromRoute = route.params.tableId
   if (tableIdFromRoute) {
     // 等待表列表加载完成后再选择
     const checkAndSelect = () => {
       if (tableHeads.value.length > 0) {
-        const tableExists = tableHeads.value.some((t) => t.id === tableIdFromRoute)
+        const tableExists = tableHeads.value.some(t => t.id === tableIdFromRoute)
         if (tableExists) {
           selectedTableId.value = tableIdFromRoute
         }
@@ -1045,7 +1074,9 @@ onMounted(() => {
         <el-icon :size="18" color="#e6a23c">
           <Warning />
         </el-icon>
-        <span class="tip-text">这是一个附表，数据将关联到主表。附表数据需要在主表数据录入时同时录入，或通过主表数据详情查看和编辑。</span>
+        <span class="tip-text"
+          >这是一个附表，数据将关联到主表。附表数据需要在主表数据录入时同时录入，或通过主表数据详情查看和编辑。</span
+        >
       </div>
     </ElCard>
 
@@ -1084,7 +1115,9 @@ onMounted(() => {
                   />
                 </template>
                 <!-- 数字类型区间查询 -->
-                <template v-else-if="['int', 'bigint', 'tinyint', 'decimal'].includes(field.dbType)">
+                <template
+                  v-else-if="['int', 'bigint', 'tinyint', 'decimal'].includes(field.dbType)"
+                >
                   <ElInputNumber
                     v-model="queryParams[`${field.dbFieldNameAlias || field.dbFieldName}Start`]"
                     placeholder="最小值"
@@ -1106,7 +1139,9 @@ onMounted(() => {
                 {{ field.dbFieldTxt || field.dbFieldName }}
               </span>
               <!-- 下拉选择/单选/多选控件 -->
-              <template v-if="['select', 'selectMultiple', 'radio', 'checkbox'].includes(field.controlType)">
+              <template
+                v-if="['select', 'selectMultiple', 'radio', 'checkbox'].includes(field.controlType)"
+              >
                 <ElSelect
                   v-if="field.controlType === 'select' || field.queryType === 'eq'"
                   v-model="queryParams[field.dbFieldNameAlias || field.dbFieldName]"
@@ -1139,7 +1174,10 @@ onMounted(() => {
               </template>
               <!-- 日期选择器 -->
               <ElDatePicker
-                v-else-if="['datePicker', 'datetimePicker'].includes(field.controlType) || ['date', 'datetime'].includes(field.dbType)"
+                v-else-if="
+                  ['datePicker', 'datetimePicker'].includes(field.controlType) ||
+                  ['date', 'datetime'].includes(field.dbType)
+                "
                 v-model="queryParams[field.dbFieldNameAlias || field.dbFieldName]"
                 :type="field.dbType === 'date' ? 'date' : 'datetime'"
                 :placeholder="`请选择${field.dbFieldTxt || field.dbFieldName}`"
@@ -1149,7 +1187,10 @@ onMounted(() => {
               />
               <!-- 数字输入 -->
               <ElInputNumber
-                v-else-if="['inputNumber'].includes(field.controlType) || ['int', 'bigint', 'tinyint', 'decimal'].includes(field.dbType)"
+                v-else-if="
+                  ['inputNumber'].includes(field.controlType) ||
+                  ['int', 'bigint', 'tinyint', 'decimal'].includes(field.dbType)
+                "
                 v-model="queryParams[field.dbFieldNameAlias || field.dbFieldName]"
                 :placeholder="`请输入${field.dbFieldTxt || field.dbFieldName}`"
                 :controls="false"
@@ -1180,13 +1221,7 @@ onMounted(() => {
       <!-- 操作栏 -->
       <div class="action-bar">
         <!-- 附表不允许单独新增数据 -->
-        <ElButton
-          v-if="!isSubTable"
-          type="primary"
-          @click="openAddDialog"
-        >
-          新增数据
-        </ElButton>
+        <ElButton v-if="!isSubTable" type="primary" @click="openAddDialog"> 新增数据 </ElButton>
         <ElButton
           v-if="isSubTable"
           type="primary"
@@ -1195,11 +1230,7 @@ onMounted(() => {
         >
           新增数据（需通过主表操作）
         </ElButton>
-        <ElButton
-          type="danger"
-          :disabled="selectedRows.length === 0"
-          @click="handleBatchDelete"
-        >
+        <ElButton type="danger" :disabled="selectedRows.length === 0" @click="handleBatchDelete">
           批量删除
         </ElButton>
         <div class="table-info">
@@ -1224,7 +1255,7 @@ onMounted(() => {
           align="center"
         />
         <ElTableColumn type="index" label="序号" width="60" align="center" />
-        
+
         <!-- 动态列 -->
         <ElTableColumn
           v-for="field in listFields"
@@ -1251,7 +1282,9 @@ onMounted(() => {
         <!-- 操作列 -->
         <ElTableColumn label="操作" width="200" align="center" fixed="right">
           <template #default="{ row }">
-            <ElButton type="primary" link size="small" @click="openDetailDialog(row)">详情</ElButton>
+            <ElButton type="primary" link size="small" @click="openDetailDialog(row)"
+              >详情</ElButton
+            >
             <ElButton type="primary" link size="small" @click="openEditDialog(row)">编辑</ElButton>
             <ElButton type="danger" link size="small" @click="handleDelete(row)">删除</ElButton>
           </template>
@@ -1304,10 +1337,10 @@ onMounted(() => {
           label-width="100px"
           class="data-form"
         >
-          <div 
-            class="form-grid" 
-            :style="{ 
-              gridTemplateColumns: `repeat(${formColumns}, 1fr)` 
+          <div
+            class="form-grid"
+            :style="{
+              gridTemplateColumns: `repeat(${formColumns}, 1fr)`
             }"
           >
             <ElFormItem
@@ -1465,7 +1498,11 @@ onMounted(() => {
                 <template #tip>
                   <div class="el-upload__tip">
                     可上传类型: {{ field.controlConfig?.accept || '*' }}
-                    {{ field.controlConfig?.maxSize ? `，单文件大小不超过 ${field.controlConfig.maxSize}MB` : '' }}
+                    {{
+                      field.controlConfig?.maxSize
+                        ? `，单文件大小不超过 ${field.controlConfig.maxSize}MB`
+                        : ''
+                    }}
                   </div>
                 </template>
               </ElUpload>
@@ -1492,17 +1529,10 @@ onMounted(() => {
       </div>
 
       <!-- 附表数据Tab（主表有附表时显示，新增和编辑模式都显示） -->
-      <div
-        v-if="isMainTable && relatedSubTables.length > 0"
-        class="sub-tables-section"
-      >
+      <div v-if="isMainTable && relatedSubTables.length > 0" class="sub-tables-section">
         <div class="section-divider"></div>
         <div class="section-title">附表数据</div>
-        <ElTabs
-          v-if="relatedSubTables.length > 0"
-          v-model="activeSubTableTab"
-          class="form-tabs"
-        >
+        <ElTabs v-if="relatedSubTables.length > 0" v-model="activeSubTableTab" class="form-tabs">
           <ElTabPane
             v-for="(subTable, index) in relatedSubTables"
             :key="subTable.id"
@@ -1521,10 +1551,10 @@ onMounted(() => {
                     label-width="80px"
                     class="data-form"
                   >
-                    <div 
-                      class="form-grid" 
-                      :style="{ 
-                        gridTemplateColumns: `repeat(${subTable.formColumns || 2}, 1fr)` 
+                    <div
+                      class="form-grid"
+                      :style="{
+                        gridTemplateColumns: `repeat(${subTable.formColumns || 2}, 1fr)`
                       }"
                     >
                       <ElFormItem
@@ -1532,12 +1562,23 @@ onMounted(() => {
                         :key="field.dbFieldName"
                         :label="field.dbFieldTxt || field.dbFieldName"
                         :class="getFieldItemClass(field)"
-                        :style="getFieldItemStyle(field, index, getSubTableFormFields(subTable), subTable.formColumns || 2)"
+                        :style="
+                          getFieldItemStyle(
+                            field,
+                            index,
+                            getSubTableFormFields(subTable),
+                            subTable.formColumns || 2
+                          )
+                        "
                       >
                         <!-- 文本框 -->
                         <ElInput
                           v-if="getControlType(field) === 'input'"
-                          v-model="subTableDataMap[subTable.id][0][field.dbFieldNameAlias || field.dbFieldName]"
+                          v-model="
+                            subTableDataMap[subTable.id][0][
+                              field.dbFieldNameAlias || field.dbFieldName
+                            ]
+                          "
                           :placeholder="`请输入${field.dbFieldTxt || field.dbFieldName}`"
                           :disabled="!isFieldEditable(field)"
                           :maxlength="getFieldMaxLength(field)"
@@ -1547,7 +1588,11 @@ onMounted(() => {
                         <!-- 密码框 -->
                         <ElInput
                           v-else-if="getControlType(field) === 'password'"
-                          v-model="subTableDataMap[subTable.id][0][field.dbFieldNameAlias || field.dbFieldName]"
+                          v-model="
+                            subTableDataMap[subTable.id][0][
+                              field.dbFieldNameAlias || field.dbFieldName
+                            ]
+                          "
                           type="password"
                           show-password
                           :placeholder="`请输入${field.dbFieldTxt || field.dbFieldName}`"
@@ -1559,7 +1604,11 @@ onMounted(() => {
                         <!-- 文本域 -->
                         <ElInput
                           v-else-if="getControlType(field) === 'textarea'"
-                          v-model="subTableDataMap[subTable.id][0][field.dbFieldNameAlias || field.dbFieldName]"
+                          v-model="
+                            subTableDataMap[subTable.id][0][
+                              field.dbFieldNameAlias || field.dbFieldName
+                            ]
+                          "
                           type="textarea"
                           :rows="3"
                           :placeholder="`请输入${field.dbFieldTxt || field.dbFieldName}`"
@@ -1571,7 +1620,11 @@ onMounted(() => {
                         <!-- 数字输入 -->
                         <ElInputNumber
                           v-else-if="getControlType(field) === 'inputNumber'"
-                          v-model="subTableDataMap[subTable.id][0][field.dbFieldNameAlias || field.dbFieldName]"
+                          v-model="
+                            subTableDataMap[subTable.id][0][
+                              field.dbFieldNameAlias || field.dbFieldName
+                            ]
+                          "
                           :placeholder="`请输入${field.dbFieldTxt || field.dbFieldName}`"
                           :disabled="field.isReadOnly"
                           :controls="false"
@@ -1581,7 +1634,11 @@ onMounted(() => {
                         <!-- 下拉单选 -->
                         <ElSelect
                           v-else-if="getControlType(field) === 'select'"
-                          v-model="subTableDataMap[subTable.id][0][field.dbFieldNameAlias || field.dbFieldName]"
+                          v-model="
+                            subTableDataMap[subTable.id][0][
+                              field.dbFieldNameAlias || field.dbFieldName
+                            ]
+                          "
                           :placeholder="`请选择${field.dbFieldTxt || field.dbFieldName}`"
                           :disabled="field.isReadOnly"
                           style="width: 100%"
@@ -1597,7 +1654,11 @@ onMounted(() => {
                         <!-- 下拉多选 -->
                         <ElSelect
                           v-else-if="getControlType(field) === 'selectMultiple'"
-                          v-model="subTableDataMap[subTable.id][0][field.dbFieldNameAlias || field.dbFieldName]"
+                          v-model="
+                            subTableDataMap[subTable.id][0][
+                              field.dbFieldNameAlias || field.dbFieldName
+                            ]
+                          "
                           :placeholder="`请选择${field.dbFieldTxt || field.dbFieldName}`"
                           :disabled="field.isReadOnly"
                           multiple
@@ -1614,7 +1675,11 @@ onMounted(() => {
                         <!-- 单选框 -->
                         <ElRadioGroup
                           v-else-if="getControlType(field) === 'radio'"
-                          v-model="subTableDataMap[subTable.id][0][field.dbFieldNameAlias || field.dbFieldName]"
+                          v-model="
+                            subTableDataMap[subTable.id][0][
+                              field.dbFieldNameAlias || field.dbFieldName
+                            ]
+                          "
                           :disabled="field.isReadOnly"
                         >
                           <ElRadio
@@ -1629,7 +1694,11 @@ onMounted(() => {
                         <!-- 复选框 -->
                         <ElCheckboxGroup
                           v-else-if="getControlType(field) === 'checkbox'"
-                          v-model="subTableDataMap[subTable.id][0][field.dbFieldNameAlias || field.dbFieldName]"
+                          v-model="
+                            subTableDataMap[subTable.id][0][
+                              field.dbFieldNameAlias || field.dbFieldName
+                            ]
+                          "
                           :disabled="field.isReadOnly"
                         >
                           <ElCheckbox
@@ -1644,7 +1713,11 @@ onMounted(() => {
                         <!-- 日期选择 -->
                         <ElDatePicker
                           v-else-if="getControlType(field) === 'datePicker'"
-                          v-model="subTableDataMap[subTable.id][0][field.dbFieldNameAlias || field.dbFieldName]"
+                          v-model="
+                            subTableDataMap[subTable.id][0][
+                              field.dbFieldNameAlias || field.dbFieldName
+                            ]
+                          "
                           type="date"
                           :placeholder="`请选择${field.dbFieldTxt || field.dbFieldName}`"
                           :disabled="field.isReadOnly"
@@ -1656,7 +1729,11 @@ onMounted(() => {
                         <!-- 日期时间选择 -->
                         <ElDatePicker
                           v-else-if="getControlType(field) === 'datetimePicker'"
-                          v-model="subTableDataMap[subTable.id][0][field.dbFieldNameAlias || field.dbFieldName]"
+                          v-model="
+                            subTableDataMap[subTable.id][0][
+                              field.dbFieldNameAlias || field.dbFieldName
+                            ]
+                          "
                           type="datetime"
                           :placeholder="`请选择${field.dbFieldTxt || field.dbFieldName}`"
                           :disabled="field.isReadOnly"
@@ -1668,7 +1745,11 @@ onMounted(() => {
                         <!-- 文件上传 -->
                         <ElUpload
                           v-else-if="getControlType(field) === 'upload'"
-                          v-model:file-list="subTableDataMap[subTable.id][0][field.dbFieldNameAlias || field.dbFieldName]"
+                          v-model:file-list="
+                            subTableDataMap[subTable.id][0][
+                              field.dbFieldNameAlias || field.dbFieldName
+                            ]
+                          "
                           :action="field.controlConfig?.uploadUrl || '/api/upload'"
                           :multiple="field.controlConfig?.multiple || false"
                           :limit="field.controlConfig?.limit || 1"
@@ -1683,7 +1764,11 @@ onMounted(() => {
                         <!-- 富文本 -->
                         <RichTextEditor
                           v-else-if="getControlType(field) === 'richText'"
-                          v-model="subTableDataMap[subTable.id][0][field.dbFieldNameAlias || field.dbFieldName]"
+                          v-model="
+                            subTableDataMap[subTable.id][0][
+                              field.dbFieldNameAlias || field.dbFieldName
+                            ]
+                          "
                           :placeholder="`请输入${field.dbFieldTxt || field.dbFieldName}`"
                           :disabled="field.isReadOnly"
                           :height="200"
@@ -1692,7 +1777,11 @@ onMounted(() => {
                         <!-- 默认输入框 -->
                         <ElInput
                           v-else
-                          v-model="subTableDataMap[subTable.id][0][field.dbFieldNameAlias || field.dbFieldName]"
+                          v-model="
+                            subTableDataMap[subTable.id][0][
+                              field.dbFieldNameAlias || field.dbFieldName
+                            ]
+                          "
                           :placeholder="`请输入${field.dbFieldTxt || field.dbFieldName}`"
                           :disabled="field.isReadOnly"
                         />
@@ -1863,9 +1952,7 @@ onMounted(() => {
                           list-type="text"
                           size="small"
                         >
-                          <ElButton type="primary" link size="small">
-                            选择文件
-                          </ElButton>
+                          <ElButton type="primary" link size="small"> 选择文件 </ElButton>
                         </ElUpload>
 
                         <!-- 富文本（表格中不显示富文本编辑器，用文本框替代） -->
@@ -1906,11 +1993,7 @@ onMounted(() => {
                   </ElTable>
                 </div>
 
-                <ElEmpty
-                  v-else
-                  description="暂无明细数据，点击上方按钮添加"
-                  :image-size="80"
-                />
+                <ElEmpty v-else description="暂无明细数据，点击上方按钮添加" :image-size="80" />
               </template>
             </div>
           </ElTabPane>
@@ -1924,23 +2007,15 @@ onMounted(() => {
     </ElDialog>
 
     <!-- 详情弹窗（样式与编辑/新增一致，只读状态） -->
-    <ElDialog
-      v-model="detailVisible"
-      title="数据详情"
-      :width="dialogWidth"
-      destroy-on-close
-    >
+    <ElDialog v-model="detailVisible" title="数据详情" :width="dialogWidth" destroy-on-close>
       <!-- 主表表单（始终显示在顶部，只读） -->
       <div class="main-table-section">
         <div class="section-title">主表数据</div>
-        <ElForm
-          label-width="100px"
-          class="data-form"
-        >
-          <div 
-            class="form-grid" 
-            :style="{ 
-              gridTemplateColumns: `repeat(${formColumns}, 1fr)` 
+        <ElForm label-width="100px" class="data-form">
+          <div
+            class="form-grid"
+            :style="{
+              gridTemplateColumns: `repeat(${formColumns}, 1fr)`
             }"
           >
             <ElFormItem
@@ -2075,10 +2150,7 @@ onMounted(() => {
               />
 
               <!-- 文件上传（只读模式显示文件名） -->
-              <div
-                v-else-if="getControlType(field) === 'upload'"
-                class="upload-readonly"
-              >
+              <div v-else-if="getControlType(field) === 'upload'" class="upload-readonly">
                 <span v-if="detailData?.[field.dbFieldNameAlias || field.dbFieldName]?.length > 0">
                   {{ detailData[field.dbFieldNameAlias || field.dbFieldName].length }} 个文件
                 </span>
@@ -2107,16 +2179,10 @@ onMounted(() => {
       </div>
 
       <!-- 附表数据Tab（主表有附表时显示，只读模式） -->
-      <div
-        v-if="isMainTable && relatedSubTables.length > 0"
-        class="sub-tables-section"
-      >
+      <div v-if="isMainTable && relatedSubTables.length > 0" class="sub-tables-section">
         <div class="section-divider"></div>
         <div class="section-title">附表数据</div>
-        <ElTabs
-          v-if="relatedSubTables.length > 0"
-          class="form-tabs"
-        >
+        <ElTabs v-if="relatedSubTables.length > 0" class="form-tabs">
           <ElTabPane
             v-for="subTable in relatedSubTables"
             :key="subTable.id"
@@ -2126,7 +2192,10 @@ onMounted(() => {
               <!-- 一对一关系：直接渲染表单（只读） -->
               <template v-if="isOneToOne(subTable)">
                 <div
-                  v-if="detailSubTableDataMap[subTable.id] && detailSubTableDataMap[subTable.id].length > 0"
+                  v-if="
+                    detailSubTableDataMap[subTable.id] &&
+                    detailSubTableDataMap[subTable.id].length > 0
+                  "
                   class="one-to-one-form"
                 >
                   <ElForm
@@ -2134,10 +2203,10 @@ onMounted(() => {
                     label-width="80px"
                     class="data-form"
                   >
-                    <div 
-                      class="form-grid" 
-                      :style="{ 
-                        gridTemplateColumns: `repeat(${subTable.formColumns || 2}, 1fr)` 
+                    <div
+                      class="form-grid"
+                      :style="{
+                        gridTemplateColumns: `repeat(${subTable.formColumns || 2}, 1fr)`
                       }"
                     >
                       <ElFormItem
@@ -2145,12 +2214,23 @@ onMounted(() => {
                         :key="field.dbFieldName"
                         :label="field.dbFieldTxt || field.dbFieldName"
                         :class="getFieldItemClass(field)"
-                        :style="getFieldItemStyle(field, index, getSubTableFormFields(subTable), subTable.formColumns || 2)"
+                        :style="
+                          getFieldItemStyle(
+                            field,
+                            index,
+                            getSubTableFormFields(subTable),
+                            subTable.formColumns || 2
+                          )
+                        "
                       >
                         <!-- 文本框 -->
                         <ElInput
                           v-if="getControlType(field) === 'input'"
-                          :model-value="detailSubTableDataMap[subTable.id][0][field.dbFieldNameAlias || field.dbFieldName]"
+                          :model-value="
+                            detailSubTableDataMap[subTable.id][0][
+                              field.dbFieldNameAlias || field.dbFieldName
+                            ]
+                          "
                           :placeholder="`请输入${field.dbFieldTxt || field.dbFieldName}`"
                           disabled
                         />
@@ -2159,7 +2239,11 @@ onMounted(() => {
                         <ElInput
                           v-else-if="getControlType(field) === 'password'"
                           type="password"
-                          :model-value="detailSubTableDataMap[subTable.id][0][field.dbFieldNameAlias || field.dbFieldName]"
+                          :model-value="
+                            detailSubTableDataMap[subTable.id][0][
+                              field.dbFieldNameAlias || field.dbFieldName
+                            ]
+                          "
                           :placeholder="`请输入${field.dbFieldTxt || field.dbFieldName}`"
                           disabled
                         />
@@ -2167,7 +2251,11 @@ onMounted(() => {
                         <!-- 文本域 -->
                         <ElInput
                           v-else-if="getControlType(field) === 'textarea'"
-                          :model-value="detailSubTableDataMap[subTable.id][0][field.dbFieldNameAlias || field.dbFieldName]"
+                          :model-value="
+                            detailSubTableDataMap[subTable.id][0][
+                              field.dbFieldNameAlias || field.dbFieldName
+                            ]
+                          "
                           type="textarea"
                           :rows="3"
                           :placeholder="`请输入${field.dbFieldTxt || field.dbFieldName}`"
@@ -2177,7 +2265,11 @@ onMounted(() => {
                         <!-- 数字输入 -->
                         <ElInputNumber
                           v-else-if="getControlType(field) === 'inputNumber'"
-                          :model-value="detailSubTableDataMap[subTable.id][0][field.dbFieldNameAlias || field.dbFieldName]"
+                          :model-value="
+                            detailSubTableDataMap[subTable.id][0][
+                              field.dbFieldNameAlias || field.dbFieldName
+                            ]
+                          "
                           :placeholder="`请输入${field.dbFieldTxt || field.dbFieldName}`"
                           disabled
                           :controls="false"
@@ -2187,7 +2279,11 @@ onMounted(() => {
                         <!-- 下拉单选 -->
                         <ElSelect
                           v-else-if="getControlType(field) === 'select'"
-                          :model-value="detailSubTableDataMap[subTable.id][0][field.dbFieldNameAlias || field.dbFieldName]"
+                          :model-value="
+                            detailSubTableDataMap[subTable.id][0][
+                              field.dbFieldNameAlias || field.dbFieldName
+                            ]
+                          "
                           :placeholder="`请选择${field.dbFieldTxt || field.dbFieldName}`"
                           disabled
                           style="width: 100%"
@@ -2203,7 +2299,11 @@ onMounted(() => {
                         <!-- 下拉多选 -->
                         <ElSelect
                           v-else-if="getControlType(field) === 'selectMultiple'"
-                          :model-value="detailSubTableDataMap[subTable.id][0][field.dbFieldNameAlias || field.dbFieldName]"
+                          :model-value="
+                            detailSubTableDataMap[subTable.id][0][
+                              field.dbFieldNameAlias || field.dbFieldName
+                            ]
+                          "
                           :placeholder="`请选择${field.dbFieldTxt || field.dbFieldName}`"
                           disabled
                           multiple
@@ -2220,7 +2320,11 @@ onMounted(() => {
                         <!-- 单选框 -->
                         <ElRadioGroup
                           v-else-if="getControlType(field) === 'radio'"
-                          :model-value="detailSubTableDataMap[subTable.id][0][field.dbFieldNameAlias || field.dbFieldName]"
+                          :model-value="
+                            detailSubTableDataMap[subTable.id][0][
+                              field.dbFieldNameAlias || field.dbFieldName
+                            ]
+                          "
                           disabled
                         >
                           <ElRadio
@@ -2235,7 +2339,11 @@ onMounted(() => {
                         <!-- 复选框 -->
                         <ElCheckboxGroup
                           v-else-if="getControlType(field) === 'checkbox'"
-                          :model-value="detailSubTableDataMap[subTable.id][0][field.dbFieldNameAlias || field.dbFieldName]"
+                          :model-value="
+                            detailSubTableDataMap[subTable.id][0][
+                              field.dbFieldNameAlias || field.dbFieldName
+                            ]
+                          "
                           disabled
                         >
                           <ElCheckbox
@@ -2250,7 +2358,11 @@ onMounted(() => {
                         <!-- 日期选择 -->
                         <ElDatePicker
                           v-else-if="getControlType(field) === 'datePicker'"
-                          :model-value="detailSubTableDataMap[subTable.id][0][field.dbFieldNameAlias || field.dbFieldName]"
+                          :model-value="
+                            detailSubTableDataMap[subTable.id][0][
+                              field.dbFieldNameAlias || field.dbFieldName
+                            ]
+                          "
                           type="date"
                           :placeholder="`请选择${field.dbFieldTxt || field.dbFieldName}`"
                           disabled
@@ -2262,7 +2374,11 @@ onMounted(() => {
                         <!-- 日期时间选择 -->
                         <ElDatePicker
                           v-else-if="getControlType(field) === 'datetimePicker'"
-                          :model-value="detailSubTableDataMap[subTable.id][0][field.dbFieldNameAlias || field.dbFieldName]"
+                          :model-value="
+                            detailSubTableDataMap[subTable.id][0][
+                              field.dbFieldNameAlias || field.dbFieldName
+                            ]
+                          "
                           type="datetime"
                           :placeholder="`请选择${field.dbFieldTxt || field.dbFieldName}`"
                           disabled
@@ -2274,7 +2390,11 @@ onMounted(() => {
                         <!-- 富文本 -->
                         <RichTextEditor
                           v-else-if="getControlType(field) === 'richText'"
-                          :model-value="detailSubTableDataMap[subTable.id][0][field.dbFieldNameAlias || field.dbFieldName]"
+                          :model-value="
+                            detailSubTableDataMap[subTable.id][0][
+                              field.dbFieldNameAlias || field.dbFieldName
+                            ]
+                          "
                           :placeholder="`请输入${field.dbFieldTxt || field.dbFieldName}`"
                           disabled
                           :height="200"
@@ -2283,7 +2403,11 @@ onMounted(() => {
                         <!-- 默认输入框 -->
                         <ElInput
                           v-else
-                          :model-value="detailSubTableDataMap[subTable.id][0][field.dbFieldNameAlias || field.dbFieldName]"
+                          :model-value="
+                            detailSubTableDataMap[subTable.id][0][
+                              field.dbFieldNameAlias || field.dbFieldName
+                            ]
+                          "
                           :placeholder="`请输入${field.dbFieldTxt || field.dbFieldName}`"
                           disabled
                         />
@@ -2291,17 +2415,16 @@ onMounted(() => {
                     </div>
                   </ElForm>
                 </div>
-                <ElEmpty
-                  v-else
-                  description="暂无附表数据"
-                  :image-size="60"
-                />
+                <ElEmpty v-else description="暂无附表数据" :image-size="60" />
               </template>
 
               <!-- 一对多关系：表格样式展示（只读） -->
               <template v-else>
                 <div
-                  v-if="detailSubTableDataMap[subTable.id] && detailSubTableDataMap[subTable.id].length > 0"
+                  v-if="
+                    detailSubTableDataMap[subTable.id] &&
+                    detailSubTableDataMap[subTable.id].length > 0
+                  "
                   class="sub-table-table-wrapper"
                 >
                   <ElTable :data="detailSubTableDataMap[subTable.id]" border stripe>
@@ -2328,17 +2451,16 @@ onMounted(() => {
                         </span>
 
                         <!-- 下拉单选（显示标签） -->
-                        <ElTag
-                          v-else-if="getControlType(field) === 'select'"
-                          size="small"
-                        >
-                          {{ getOptionLabel(row[field.dbFieldNameAlias || field.dbFieldName], field) }}
+                        <ElTag v-else-if="getControlType(field) === 'select'" size="small">
+                          {{
+                            getOptionLabel(row[field.dbFieldNameAlias || field.dbFieldName], field)
+                          }}
                         </ElTag>
 
                         <!-- 下拉多选（显示标签） -->
                         <div v-else-if="getControlType(field) === 'selectMultiple'">
                           <ElTag
-                            v-for="val in (row[field.dbFieldNameAlias || field.dbFieldName] || [])"
+                            v-for="val in row[field.dbFieldNameAlias || field.dbFieldName] || []"
                             :key="val"
                             size="small"
                             class="mr-2"
@@ -2348,17 +2470,16 @@ onMounted(() => {
                         </div>
 
                         <!-- 单选框（显示标签） -->
-                        <ElTag
-                          v-else-if="getControlType(field) === 'radio'"
-                          size="small"
-                        >
-                          {{ getOptionLabel(row[field.dbFieldNameAlias || field.dbFieldName], field) }}
+                        <ElTag v-else-if="getControlType(field) === 'radio'" size="small">
+                          {{
+                            getOptionLabel(row[field.dbFieldNameAlias || field.dbFieldName], field)
+                          }}
                         </ElTag>
 
                         <!-- 复选框（显示标签） -->
                         <div v-else-if="getControlType(field) === 'checkbox'">
                           <ElTag
-                            v-for="val in (row[field.dbFieldNameAlias || field.dbFieldName] || [])"
+                            v-for="val in row[field.dbFieldNameAlias || field.dbFieldName] || []"
                             :key="val"
                             size="small"
                             class="mr-2"
@@ -2368,7 +2489,11 @@ onMounted(() => {
                         </div>
 
                         <!-- 日期/日期时间 -->
-                        <span v-else-if="['datePicker', 'datetimePicker'].includes(getControlType(field))">
+                        <span
+                          v-else-if="
+                            ['datePicker', 'datetimePicker'].includes(getControlType(field))
+                          "
+                        >
                           {{ row[field.dbFieldNameAlias || field.dbFieldName] || '-' }}
                         </span>
 
@@ -2381,11 +2506,7 @@ onMounted(() => {
                   </ElTable>
                 </div>
 
-                <ElEmpty
-                  v-else
-                  description="暂无明细数据"
-                  :image-size="60"
-                />
+                <ElEmpty v-else description="暂无明细数据" :image-size="60" />
               </template>
             </div>
           </ElTabPane>
@@ -2508,7 +2629,7 @@ onMounted(() => {
   align-items: center;
   margin-bottom: 16px;
   padding-bottom: 12px;
-  border-bottom: 1px solid #EBEEF5;
+  border-bottom: 1px solid #ebeef5;
 }
 
 .sub-table-title {
@@ -2528,10 +2649,10 @@ onMounted(() => {
 }
 
 .sub-table-row {
-  background: #FAFAFA;
+  background: #fafafa;
   border-radius: 8px;
   padding: 16px;
-  border: 1px solid #E4E7ED;
+  border: 1px solid #e4e7ed;
 }
 
 .row-header {
@@ -2540,13 +2661,13 @@ onMounted(() => {
   align-items: center;
   margin-bottom: 12px;
   padding-bottom: 8px;
-  border-bottom: 1px dashed #DCDFE6;
+  border-bottom: 1px dashed #dcdfe6;
 }
 
 .row-index {
   font-size: 14px;
   font-weight: 500;
-  color: #409EFF;
+  color: #409eff;
 }
 
 .row-form {
@@ -2579,12 +2700,12 @@ onMounted(() => {
 }
 
 .sub-table-list::-webkit-scrollbar-thumb {
-  background: #C0C4CC;
+  background: #c0c4cc;
   border-radius: 3px;
 }
 
 .sub-table-list::-webkit-scrollbar-track {
-  background: #F2F6FC;
+  background: #f2f6fc;
 }
 
 /* 主表区域样式 */
@@ -2598,7 +2719,7 @@ onMounted(() => {
   color: #303133;
   margin-bottom: 16px;
   padding-left: 8px;
-  border-left: 3px solid #409EFF;
+  border-left: 3px solid #409eff;
 }
 
 /* 附表区域样式 */
@@ -2609,7 +2730,7 @@ onMounted(() => {
 
 .section-divider {
   height: 1px;
-  background: linear-gradient(90deg, transparent 0%, #E4E7ED 50%, transparent 100%);
+  background: linear-gradient(90deg, transparent 0%, #e4e7ed 50%, transparent 100%);
   margin: 20px 0;
 }
 
@@ -2637,7 +2758,7 @@ onMounted(() => {
   cursor: pointer;
   user-select: none;
   padding-bottom: 8px;
-  border-bottom: 1px solid #EBEEF5;
+  border-bottom: 1px solid #ebeef5;
   margin-bottom: 12px;
 }
 
@@ -2697,6 +2818,6 @@ onMounted(() => {
   gap: 10px;
   justify-content: flex-start;
   padding-top: 8px;
-  border-top: 1px dashed #EBEEF5;
+  border-top: 1px dashed #ebeef5;
 }
 </style>

@@ -16,7 +16,7 @@ export const getCurrentTime = () => {
 }
 
 // 成功响应包装
-export const successResponse = (data) => {
+export const successResponse = data => {
   return {
     success: true,
     data: data,

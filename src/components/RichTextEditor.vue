@@ -54,11 +54,7 @@ const editorConfig = computed(() => ({
 // 工具栏配置
 const toolbarConfig = {
   // 排除哪些菜单
-  excludeKeys: [
-    'fullScreen',
-    'codeBlock',
-    'todo'
-  ]
+  excludeKeys: ['fullScreen', 'codeBlock', 'todo']
 }
 
 // 编辑器模式
@@ -71,15 +67,15 @@ const defaultContent = ref('')
 let isManualChange = false
 
 // 同步值到编辑器
-const syncValueToEditor = (value) => {
+const syncValueToEditor = value => {
   if (!editorRef.value || isManualChange) return
-  
+
   const editor = editorRef.value
   const currentHtml = editor.getHtml()
-  
+
   // 处理 undefined/null 的情况
   const normalizedValue = value ?? ''
-  
+
   // 只有当值真正不同时才更新，避免循环
   if (currentHtml !== normalizedValue) {
     editor.setHtml(normalizedValue)
@@ -89,7 +85,7 @@ const syncValueToEditor = (value) => {
 // 监听 modelValue 变化（包括初始值）
 watch(
   () => props.modelValue,
-  (newVal) => {
+  newVal => {
     syncValueToEditor(newVal)
   },
   { immediate: true }
@@ -98,7 +94,7 @@ watch(
 // 监听 disabled 变化
 watch(
   () => props.disabled,
-  (newVal) => {
+  newVal => {
     if (editorRef.value) {
       const editor = editorRef.value
       if (newVal) {
@@ -111,14 +107,14 @@ watch(
 )
 
 // 编辑器创建时
-const handleCreated = (editor) => {
+const handleCreated = editor => {
   editorRef.value = editor
   // 设置初始内容
   syncValueToEditor(props.modelValue)
 }
 
 // 编辑器内容变化时
-const handleChange = (editor) => {
+const handleChange = editor => {
   isManualChange = true
   const html = editor.getHtml()
   emit('update:modelValue', html)
@@ -140,12 +136,7 @@ onBeforeUnmount(() => {
 <template>
   <div class="rich-text-editor">
     <div class="rich-text-toolbar">
-      <Toolbar
-        ref="toolbarRef"
-        :editor="editorRef"
-        :defaultConfig="toolbarConfig"
-        :mode="mode"
-      />
+      <Toolbar ref="toolbarRef" :editor="editorRef" :defaultConfig="toolbarConfig" :mode="mode" />
     </div>
     <div class="rich-text-content" :style="{ height: `${height}px` }">
       <Editor

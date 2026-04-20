@@ -2,12 +2,12 @@ import { generateId, getCurrentTime, successResponse, pageResponse, paginate } f
 import { getTableConfigById } from './tableHead'
 
 // 获取表数据的存储键
-const getTableDataStorageKey = (tableId) => {
+const getTableDataStorageKey = tableId => {
   return `mock_table_data_${tableId}`
 }
 
 // 加载表数据
-const loadTableData = (tableId) => {
+const loadTableData = tableId => {
   const key = getTableDataStorageKey(tableId)
   const stored = localStorage.getItem(key)
   if (stored) {
@@ -26,7 +26,7 @@ const saveTableData = (tableId, data) => {
 }
 
 // 根据表配置生成默认数据
-const generateDefaultData = (tableId) => {
+const generateDefaultData = tableId => {
   const tableConfig = getTableConfigById(tableId)
   if (!tableConfig) return []
 
@@ -138,7 +138,7 @@ const generateDefaultData = (tableId) => {
       {
         id: 'data_order_002',
         orderNo: 'ORD202401160001',
-        orderAmount: 599.00,
+        orderAmount: 599.0,
         orderStatus: 1,
         customerName: '李四',
         customerPhone: '13800138002',
@@ -153,7 +153,7 @@ const generateDefaultData = (tableId) => {
       {
         id: 'data_order_003',
         orderNo: 'ORD202401170001',
-        orderAmount: 3500.50,
+        orderAmount: 3500.5,
         orderStatus: 0,
         customerName: '王五',
         customerPhone: '13800138003',
@@ -168,7 +168,7 @@ const generateDefaultData = (tableId) => {
       {
         id: 'data_order_004',
         orderNo: 'ORD202401170002',
-        orderAmount: 120.00,
+        orderAmount: 120.0,
         orderStatus: 3,
         customerName: '赵六',
         customerPhone: '13800138004',
@@ -188,13 +188,13 @@ const generateDefaultData = (tableId) => {
 
 // 分页查询表数据
 export function pageQuery(tableId, params) {
-  return new Promise((resolve) => {
+  return new Promise(resolve => {
     setTimeout(() => {
       const tableData = loadTableData(tableId)
       let filtered = tableData
 
       // 过滤掉已删除的数据
-      filtered = filtered.filter((item) => item.deleteFlag !== 1)
+      filtered = filtered.filter(item => item.deleteFlag !== 1)
 
       // 分页
       const pageNo = params.pageNo || 1
@@ -208,10 +208,10 @@ export function pageQuery(tableId, params) {
 
 // 根据ID查询表数据
 export function queryById(tableId, id) {
-  return new Promise((resolve) => {
+  return new Promise(resolve => {
     setTimeout(() => {
       const tableData = loadTableData(tableId)
-      const item = tableData.find((t) => t.id === id)
+      const item = tableData.find(t => t.id === id)
       resolve(successResponse(item || null))
     }, 100)
   })
@@ -219,7 +219,7 @@ export function queryById(tableId, id) {
 
 // 新增表数据
 export function insert(tableId, data) {
-  return new Promise((resolve) => {
+  return new Promise(resolve => {
     setTimeout(() => {
       const tableData = loadTableData(tableId)
       const now = getCurrentTime()
@@ -239,10 +239,10 @@ export function insert(tableId, data) {
 
 // 更新表数据
 export function update(tableId, data) {
-  return new Promise((resolve) => {
+  return new Promise(resolve => {
     setTimeout(() => {
       const tableData = loadTableData(tableId)
-      const index = tableData.findIndex((t) => t.id === data.id)
+      const index = tableData.findIndex(t => t.id === data.id)
       if (index !== -1) {
         tableData[index] = {
           ...tableData[index],
@@ -258,10 +258,10 @@ export function update(tableId, data) {
 
 // 根据ID删除表数据（软删除）
 export function deleteById(tableId, id) {
-  return new Promise((resolve) => {
+  return new Promise(resolve => {
     setTimeout(() => {
       const tableData = loadTableData(tableId)
-      const index = tableData.findIndex((t) => t.id === id)
+      const index = tableData.findIndex(t => t.id === id)
       if (index !== -1) {
         tableData[index] = {
           ...tableData[index],
@@ -277,11 +277,11 @@ export function deleteById(tableId, id) {
 
 // 批量删除表数据（软删除）
 export function batchDeleteByIds(tableId, ids) {
-  return new Promise((resolve) => {
+  return new Promise(resolve => {
     setTimeout(() => {
       const tableData = loadTableData(tableId)
       const now = getCurrentTime()
-      tableData.forEach((item) => {
+      tableData.forEach(item => {
         if (ids.includes(item.id)) {
           item.deleteFlag = 1
           item.updateTime = now
@@ -295,10 +295,12 @@ export function batchDeleteByIds(tableId, ids) {
 
 // 根据主表ID查询附表数据
 export function queryByMainTableId(subTableId, mainTableId, relationFieldName = 'mainTableId') {
-  return new Promise((resolve) => {
+  return new Promise(resolve => {
     setTimeout(() => {
       const tableData = loadTableData(subTableId)
-      const filtered = tableData.filter((item) => item[relationFieldName] === mainTableId && item.deleteFlag !== 1)
+      const filtered = tableData.filter(
+        item => item[relationFieldName] === mainTableId && item.deleteFlag !== 1
+      )
       resolve(successResponse(filtered))
     }, 100)
   })
@@ -306,11 +308,11 @@ export function queryByMainTableId(subTableId, mainTableId, relationFieldName = 
 
 // 根据主表ID删除附表数据（软删除）
 export function deleteByMainTableId(subTableId, mainTableId, relationFieldName = 'mainTableId') {
-  return new Promise((resolve) => {
+  return new Promise(resolve => {
     setTimeout(() => {
       const tableData = loadTableData(subTableId)
       const now = getCurrentTime()
-      tableData.forEach((item) => {
+      tableData.forEach(item => {
         if (item[relationFieldName] === mainTableId) {
           item.deleteFlag = 1
           item.updateTime = now
