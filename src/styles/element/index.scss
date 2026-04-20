@@ -1,0 +1,10 @@
+// Element Plus 命名空间样式
+// 设置命名空间前缀，避免与主应用样式冲突
+
+// 使用 @use 配置命名空间
+@use 'element-plus/theme-chalk/src/mixins/config.scss' with (
+  $namespace: 'sub-el'
+);
+
+// 导入 Element Plus 的所有组件样式
+@use 'element-plus/theme-chalk/src/index.scss' as *;

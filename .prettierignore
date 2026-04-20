@@ -1,0 +1,18 @@
+node_modules
+dist
+*.local
+*.log*
+.vscode
+.idea
+*.sh
+public
+*.md
+*.gif
+*.png
+*.jpg
+*.jpeg
+*.svg
+
+# 自动生成的类型文件
+src/auto-imports.d.ts
+src/components.d.ts
