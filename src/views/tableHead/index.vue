@@ -254,12 +254,16 @@ const getAvailableQueryTypes = controlType => {
 
 // 当前字段可用的查询方式
 const availableQueryTypes = computed(() => {
+  // 敏感字段只能选择"不查询"
+  if (fieldConfigFormData.isSensitiveField) {
+    return QUERY_TYPE_OPTIONS.filter(t => t.value === 'none')
+  }
   return getAvailableQueryTypes(fieldConfigFormData.controlType)
 })
 
 // 监听控件类型变化，自动调整查询方式
 const watchControlType = () => {
-  const available = getAvailableQueryTypes(fieldConfigFormData.controlType)
+  const available = availableQueryTypes.value
   const currentQueryType = fieldConfigFormData.queryType
 
   // 如果当前查询方式不再可用，自动切换到第一个可用的
@@ -269,8 +273,26 @@ const watchControlType = () => {
   }
 }
 
+// 监听敏感字段变化，自动设置相关属性
+const watchSensitiveField = isSensitive => {
+  if (isSensitive) {
+    // 当设置为敏感字段时，自动设置：
+    // 1. 列表显示 = false
+    // 2. 新增可录 = false
+    // 3. 新增显示 = false
+    // 4. 查询方式 = "none"
+    fieldConfigFormData.isShowList = false
+    fieldConfigFormData.isAddable = false
+    fieldConfigFormData.isShowInAdd = false
+    fieldConfigFormData.queryType = 'none'
+  }
+}
+
 // 监听控件类型变化
 watch(() => fieldConfigFormData.controlType, watchControlType)
+
+// 监听敏感字段变化
+watch(() => fieldConfigFormData.isSensitiveField, watchSensitiveField)
 
 const getDefaultFields = () => [
   {
@@ -534,6 +556,18 @@ const LAYOUT_TYPE_OPTIONS = [
   { label: '换行', value: 'newLine' }
 ]
 
+// 脱敏类型选项
+const DESENSITIZE_TYPE_OPTIONS = [
+  { label: '不脱敏', value: 'none' },
+  { label: '手机号', value: 'phone' },
+  { label: '身份证号', value: 'idCard' },
+  { label: '银行卡号', value: 'bankCard' },
+  { label: '邮箱', value: 'email' },
+  { label: '姓名', value: 'name' },
+  { label: '地址', value: 'address' },
+  { label: '自定义', value: 'custom' }
+]
+
 // 字段配置对话框相关
 const fieldConfigDialogVisible = ref(false)
 const currentFieldIndex = ref(-1)
@@ -549,6 +583,12 @@ const fieldConfigFormData = reactive({
   isShowInAdd: true,
   layoutType: 'default',
   isSensitiveField: false,
+  desensitizeType: 'none',
+  customDesensitize: {
+    startIndex: 0,
+    endIndex: 0,
+    maskChar: '*'
+  },
   controlConfig: {
     dataSourceType: 'static',
     dictionaryCode: '',
@@ -599,6 +639,15 @@ const openFieldConfigDialog = (row, index) => {
 
   // 敏感字段配置（密码等字段，列表不展示、数据不返回）
   fieldConfigFormData.isSensitiveField = row.isSensitiveField === true
+
+  // 脱敏配置
+  fieldConfigFormData.desensitizeType = row.desensitizeType || 'none'
+  const customDesensitize = row.customDesensitize || {}
+  fieldConfigFormData.customDesensitize = {
+    startIndex: customDesensitize.startIndex ?? 0,
+    endIndex: customDesensitize.endIndex ?? 0,
+    maskChar: customDesensitize.maskChar || '*'
+  }
 
   // 复制 controlConfig
   const controlConfig = row.controlConfig || {}
@@ -656,6 +705,10 @@ const handleFieldConfigSubmit = async () => {
     // 敏感字段配置
     field.isSensitiveField = fieldConfigFormData.isSensitiveField
 
+    // 脱敏配置
+    field.desensitizeType = fieldConfigFormData.desensitizeType
+    field.customDesensitize = { ...fieldConfigFormData.customDesensitize }
+
     field.controlConfig = { ...fieldConfigFormData.controlConfig }
     field.validationRules = { ...fieldConfigFormData.validationRules }
   }
@@ -684,6 +737,34 @@ const needOptionConfig = computed(() => {
 // 判断是否需要显示日期格式配置
 const needDateFormatConfig = computed(() => {
   return ['datePicker', 'datetimePicker'].includes(fieldConfigFormData.controlType)
+})
+
+// 根据数据库类型获取可用的日期格式选项
+const availableDateFormatOptions = computed(() => {
+  // 年月日格式选项
+  const dateOnlyOptions = [
+    { label: 'YYYY-MM-DD', value: 'YYYY-MM-DD' },
+    { label: 'YYYY/MM/DD', value: 'YYYY/MM/DD' },
+    { label: 'YYYY年MM月DD日', value: 'YYYY年MM月DD日' }
+  ]
+
+  // 日期时间格式选项
+  const dateTimeOptions = [{ label: 'YYYY-MM-DD HH:mm:ss', value: 'YYYY-MM-DD HH:mm:ss' }]
+
+  // 如果没有当前配置的字段，返回所有选项
+  if (!currentConfigField.value) {
+    return [...dateOnlyOptions, ...dateTimeOptions]
+  }
+
+  // 根据数据库类型返回不同的选项
+  const dbType = currentConfigField.value.dbType
+  if (dbType === 'date') {
+    // date类型只能选择年月日格式
+    return dateOnlyOptions
+  }
+
+  // datetime或其他类型可以选择所有格式
+  return [...dateOnlyOptions, ...dateTimeOptions]
 })
 
 // 判断是否需要显示文件配置
@@ -1730,10 +1811,12 @@ onMounted(() => {
                   v-model="fieldConfigFormData.controlConfig.dateFormat"
                   style="width: 100%"
                 >
-                  <ElOption label="YYYY-MM-DD" value="YYYY-MM-DD" />
-                  <ElOption label="YYYY-MM-DD HH:mm:ss" value="YYYY-MM-DD HH:mm:ss" />
-                  <ElOption label="YYYY/MM/DD" value="YYYY/MM/DD" />
-                  <ElOption label="YYYY年MM月DD日" value="YYYY年MM月DD日" />
+                  <ElOption
+                    v-for="item in availableDateFormatOptions"
+                    :key="item.value"
+                    :label="item.label"
+                    :value="item.value"
+                  />
                 </ElSelect>
               </ElFormItem>
             </template>
@@ -1838,16 +1921,63 @@ onMounted(() => {
 
             <template v-if="fieldConfigFormData.controlType === 'password'">
               <ElDivider>敏感字段配置</ElDivider>
+
               <ElFormItem label="敏感字段">
                 <ElSwitch
                   v-model="fieldConfigFormData.isSensitiveField"
                   active-text="是"
                   inactive-text="否"
                 />
-                <div class="form-tip">
-                  开启后：列表不展示该字段，接口返回数据时也不会返回该字段值
+                <div class="form-tip mt-8">
+                  开启后：列表不展示该字段，接口返回数据时不返回该字段值，且不可配置查询条件
                 </div>
               </ElFormItem>
+
+              <template v-if="fieldConfigFormData.isSensitiveField">
+                <ElFormItem label="脱敏类型">
+                  <ElSelect v-model="fieldConfigFormData.desensitizeType" style="width: 100%">
+                    <ElOption
+                      v-for="item in DESENSITIZE_TYPE_OPTIONS"
+                      :key="item.value"
+                      :label="item.label"
+                      :value="item.value"
+                    />
+                  </ElSelect>
+                </ElFormItem>
+
+                <template v-if="fieldConfigFormData.desensitizeType === 'custom'">
+                  <ElFormItem label="脱敏配置">
+                    <div class="desensitize-config">
+                      <span class="desensitize-label">保留前</span>
+                      <ElInputNumber
+                        v-model="fieldConfigFormData.customDesensitize.startIndex"
+                        :min="0"
+                        :max="100"
+                        size="small"
+                        style="width: 80px"
+                      />
+                      <span class="desensitize-label">位，保留后</span>
+                      <ElInputNumber
+                        v-model="fieldConfigFormData.customDesensitize.endIndex"
+                        :min="0"
+                        :max="100"
+                        size="small"
+                        style="width: 80px"
+                      />
+                      <span class="desensitize-label">位</span>
+                    </div>
+                  </ElFormItem>
+                  <ElFormItem label="脱敏字符">
+                    <ElInput
+                      v-model="fieldConfigFormData.customDesensitize.maskChar"
+                      maxlength="1"
+                      size="small"
+                      style="width: 100px"
+                      placeholder="如：*"
+                    />
+                  </ElFormItem>
+                </template>
+              </template>
             </template>
           </ElForm>
         </ElTabPane>
@@ -2205,5 +2335,23 @@ onMounted(() => {
   margin-top: 8px;
   font-size: 12px;
   color: #909399;
+}
+
+/* 脱敏配置样式 */
+.desensitize-config {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.desensitize-label {
+  font-size: 13px;
+  color: #606266;
+  white-space: nowrap;
+}
+
+.mt-8 {
+  margin-top: 8px;
 }
 </style>
