@@ -1,7 +1,7 @@
 import { ref, reactive, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { insert, update, queryById } from '@/mock/tableData'
-import { buildFieldRules, createEmptyTableRow } from '@/utils/form-utils'
+import { buildFieldRules, createEmptyTableRow } from '@/utils'
 
 /**
  * 表单相关的逻辑

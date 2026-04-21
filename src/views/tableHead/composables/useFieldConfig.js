@@ -1,5 +1,5 @@
 import { ref, reactive, computed, watch } from 'vue'
-import { CONTROL_TYPE_OPTIONS } from '../constants'
+import { CONTROL_TYPE_OPTIONS, PRESET_VALIDATION_RULES } from '@/constants'
 import {
   getDefaultControlType,
   getDefaultQueryType,
@@ -11,8 +11,7 @@ import {
   isTextFieldType,
   isNumberFieldType,
   getAvailableDateFormatOptions
-} from '../utils'
-import { PRESET_VALIDATION_RULES } from '../constants'
+} from '@/utils'
 
 /**
  * 字段配置逻辑

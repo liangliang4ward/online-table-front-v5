@@ -1,12 +1,7 @@
 import { ref, reactive, computed } from 'vue'
 import { queryByMainTableId } from '@/mock/tableData'
 import { getAllTableHeads } from '@/mock/tableHead'
-import {
-  isOneToMany,
-  isOneToOne,
-  getSubTableFormFields,
-  createEmptyTableRow
-} from '@/utils/form-utils'
+import { isOneToMany, isOneToOne, getSubTableFormFields, createEmptyTableRow } from '@/utils'
 
 /**
  * 附表相关的逻辑

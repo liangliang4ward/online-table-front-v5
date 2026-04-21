@@ -11,7 +11,7 @@ import {
   syncDb
 } from '@/mock/tableHead'
 import { pageQuery as queryDatasourceList } from '@/mock/datasource'
-import { getDefaultFields, getPreviewLink } from '../utils'
+import { getDefaultFields, getPreviewLink } from '@/utils'
 
 /**
  * 表管理核心逻辑

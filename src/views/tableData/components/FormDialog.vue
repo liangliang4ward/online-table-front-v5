@@ -7,7 +7,7 @@ import {
   getSubTableFormFields,
   isOneToOne,
   isOneToMany
-} from '@/utils/form-utils'
+} from '@/utils'
 
 const props = defineProps({
   visible: {

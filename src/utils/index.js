@@ -1,38 +1,13 @@
-/**
- * 工具函数 - 格式化日期
- */
-export function formatDate(date, format = 'YYYY-MM-DD') {
-  const d = new Date(date)
-  const year = d.getFullYear()
-  const month = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
+// ==================== 统一导出入口 ====================
+// 所有工具函数从这里统一导出，保持向后兼容
 
-  return format.replace('YYYY', year).replace('MM', month).replace('DD', day)
-}
+// 表单相关工具
+export * from './form'
 
-/**
- * 防抖函数
- */
-export function debounce(fn, delay = 300) {
-  let timer = null
-  return function (...args) {
-    if (timer) clearTimeout(timer)
-    timer = setTimeout(() => {
-      fn.apply(this, args)
-    }, delay)
-  }
-}
+// 表管理相关工具
+export * from './table'
 
-/**
- * 节流函数
- */
-export function throttle(fn, delay = 300) {
-  let lastTime = 0
-  return function (...args) {
-    const now = Date.now()
-    if (now - lastTime >= delay) {
-      fn.apply(this, args)
-      lastTime = now
-    }
-  }
-}
+// 从 form 中导出核心函数，确保与旧的 form-utils.js 兼容
+import { buildFieldRules, createEmptyTableRow, getControlType } from './form'
+
+export { buildFieldRules, createEmptyTableRow, getControlType }

@@ -7,7 +7,7 @@ import {
   getFieldMaxLength,
   isFieldEditable,
   getOptionLabel
-} from '@/utils/form-utils'
+} from '@/utils'
 
 const props = defineProps({
   field: {

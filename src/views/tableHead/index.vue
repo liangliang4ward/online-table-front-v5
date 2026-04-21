@@ -32,7 +32,7 @@ import {
   RELATION_TYPE_OPTIONS,
   SYSTEM_FIELDS,
   FIXED_NAME_FIELDS
-} from './constants'
+} from '@/constants'
 import {
   toCamelCase,
   isAllowDecimal,
@@ -42,7 +42,7 @@ import {
   getSyncStatusTagType,
   getDbTypeLabel,
   getIndexTypeLabel
-} from './utils'
+} from '@/utils'
 
 // 引入 composables
 import { useTableHead } from './composables/useTableHead'

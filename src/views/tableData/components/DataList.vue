@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from 'vue'
-import { formatValue, getStatusTagType } from '@/utils/form-utils'
+import { formatValue, getStatusTagType } from '@/utils'
 
 const props = defineProps({
   tableData: {

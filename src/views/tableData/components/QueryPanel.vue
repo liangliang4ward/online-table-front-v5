@@ -1,5 +1,5 @@
 <script setup>
-import { getFieldOptions } from '@/utils/form-utils'
+import { getFieldOptions } from '@/utils'
 
 const props = defineProps({
   queryFields: {
