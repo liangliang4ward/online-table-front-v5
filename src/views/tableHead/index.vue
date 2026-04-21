@@ -1,6 +1,5 @@
 <script setup>
-import { ref, reactive, onMounted, computed, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, reactive, computed, onMounted } from 'vue'
 import {
   ElCard,
   ElTable,
@@ -15,8 +14,8 @@ import {
   ElSelect,
   ElOption,
   ElSwitch,
-  ElMessage,
-  ElMessageBox,
+  ElRadio,
+  ElRadioGroup,
   ElTag,
   ElTabs,
   ElTabPane,
@@ -25,1020 +24,112 @@ import {
   ElTooltip
 } from 'element-plus'
 import {
-  pageQuery,
-  queryById,
-  insert,
-  update,
-  deleteById,
-  batchDeleteByIds,
-  syncDb
-} from '@/mock/tableHead'
-import { pageQuery as queryDatasourceList } from '@/mock/datasource'
-
-const router = useRouter()
-
-const TABLE_TYPE_OPTIONS = [
-  { label: '单表', value: 0 },
-  { label: '主表', value: 1 },
-  { label: '附表', value: 2 }
-]
-
-const SYNC_STATUS_OPTIONS = [
-  { label: '已同步', value: 'Y' },
-  { label: '未同步', value: 'N' }
-]
-
-// 数据库类型选项（MySQL字段类型）
-const DB_TYPE_OPTIONS = [
-  { label: 'varchar', value: 'varchar' },
-  { label: 'int', value: 'int' },
-  { label: 'bigint', value: 'bigint' },
-  { label: 'tinyint', value: 'tinyint' },
-  { label: 'decimal', value: 'decimal' },
-  { label: 'date', value: 'date' },
-  { label: 'datetime', value: 'datetime' },
-  { label: 'text', value: 'text' },
-  { label: 'longtext', value: 'longtext' }
-]
-
-const INDEX_TYPE_OPTIONS = [
-  { label: '普通索引', value: 'normal' },
-  { label: '唯一索引', value: 'unique' }
-]
-
-const ID_TYPE_OPTIONS = [
-  { label: 'int', value: 'int' },
-  { label: 'bigint', value: 'bigint' },
-  { label: 'varchar', value: 'varchar' }
-]
-
-// 控件类型选项
-const CONTROL_TYPE_OPTIONS = [
-  { label: '文本框', value: 'input' },
-  { label: '密码框', value: 'password' },
-  { label: '文本域', value: 'textarea' },
-  { label: '数字输入', value: 'inputNumber' },
-  { label: '下拉选择(单选)', value: 'select' },
-  { label: '下拉选择(多选)', value: 'selectMultiple' },
-  { label: '单选框', value: 'radio' },
-  { label: '复选框', value: 'checkbox' },
-  { label: '日期选择', value: 'datePicker' },
-  { label: '日期时间选择', value: 'datetimePicker' },
-  { label: '文件上传', value: 'upload' },
-  { label: '富文本', value: 'richText' }
-]
-
-// 查询方式选项
-const QUERY_TYPE_OPTIONS = [
-  { label: '不查询', value: 'none' },
-  { label: '等于', value: 'eq' },
-  { label: '模糊查询', value: 'like' },
-  { label: '大于', value: 'gt' },
-  { label: '小于', value: 'lt' },
-  { label: '大于等于', value: 'gte' },
-  { label: '小于等于', value: 'lte' },
-  { label: '区间', value: 'between' },
-  { label: '多选', value: 'in' }
-]
-
-// 数据来源类型选项
-const DATA_SOURCE_TYPE_OPTIONS = [
-  { label: '静态选项', value: 'static' },
-  { label: '字典', value: 'dictionary' },
-  { label: '接口', value: 'api' }
-]
-
-const SYSTEM_FIELDS = ['create_time', 'update_time', 'delete_flag']
-
-const FIXED_NAME_FIELDS = ['id', 'create_by', 'update_by', ...SYSTEM_FIELDS]
-
-const toCamelCase = str => {
-  if (!str) return ''
-  return str.toLowerCase().replace(/_([a-z])/g, (_, letter) => letter.toUpperCase())
-}
-
-// 获取默认控件类型（根据数据库类型推断）
-const getDefaultControlType = dbType => {
-  const map = {
-    string: 'input',
-    int: 'inputNumber',
-    long: 'inputNumber',
-    date: 'datePicker',
-    datetime: 'datetimePicker',
-    double: 'inputNumber',
-    bigdecimal: 'inputNumber',
-    text: 'textarea',
-    blob: 'textarea'
-  }
-  return map[dbType] || 'input'
-}
-
-// 获取默认查询类型
-const getDefaultQueryType = dbType => {
-  if (['date', 'datetime'].includes(dbType)) {
-    return 'between'
-  }
-  if (['int', 'long', 'double', 'bigdecimal'].includes(dbType)) {
-    return 'eq'
-  }
-  return 'like'
-}
-
-// 判断是否允许小数点（只有decimal类型允许）
-const isAllowDecimal = dbType => {
-  return ['decimal'].includes(dbType)
-}
-
-// 根据数据库类型获取可用的控件类型选项
-const getAvailableControlTypes = dbType => {
-  const allTypes = [...CONTROL_TYPE_OPTIONS]
-
-  // 根据数据库类型过滤控件类型
-  switch (dbType) {
-    case 'varchar':
-    case 'text':
-    case 'longtext':
-      // 字符串/文本类型：允许文本框、文本域、下拉选择、单选、复选、文件上传、富文本
-      // 不允许数字输入、日期选择、日期时间选择
-      return allTypes.filter(
-        t => !['inputNumber', 'datePicker', 'datetimePicker'].includes(t.value)
-      )
-    case 'int':
-    case 'bigint':
-    case 'tinyint':
-      // 整型类型：允许数字输入、下拉选择、单选、复选
-      // 不允许日期选择、日期时间选择、文件上传、富文本
-      return allTypes.filter(
-        t => !['datePicker', 'datetimePicker', 'upload', 'richText'].includes(t.value)
-      )
-    case 'date':
-      // 日期类型：允许日期选择、文本框
-      // 不允许数字输入、日期时间选择、下拉多选、复选、文件上传、富文本
-      return allTypes.filter(t =>
-        ['input', 'textarea', 'datePicker', 'select', 'radio'].includes(t.value)
-      )
-    case 'datetime':
-      // 日期时间类型：允许日期时间选择、文本框
-      // 不允许数字输入、日期选择、下拉多选、复选、文件上传、富文本
-      return allTypes.filter(t =>
-        ['input', 'textarea', 'datetimePicker', 'select', 'radio'].includes(t.value)
-      )
-    case 'decimal':
-      // 小数类型：允许数字输入、下拉选择、单选、复选
-      // 不允许日期选择、日期时间选择、文件上传、富文本
-      return allTypes.filter(
-        t => !['datePicker', 'datetimePicker', 'upload', 'richText'].includes(t.value)
-      )
-    default:
-      return allTypes
-  }
-}
-
-// 当前正在配置的字段
-const currentConfigField = ref(null)
-
-// 当前字段可用的控件类型
-const availableControlTypes = computed(() => {
-  if (!currentConfigField.value) {
-    return CONTROL_TYPE_OPTIONS
-  }
-  return getAvailableControlTypes(currentConfigField.value.dbType)
-})
-
-// 根据控件类型获取可用的查询方式
-const getAvailableQueryTypes = controlType => {
-  const allTypes = [...QUERY_TYPE_OPTIONS]
-
-  switch (controlType) {
-    case 'input':
-    case 'textarea':
-    case 'richText':
-      // 文本类型：支持不查询、等于、模糊查询
-      return allTypes.filter(t => ['none', 'eq', 'like'].includes(t.value))
-
-    case 'password':
-      // 密码类型：只支持不查询、等于（不推荐查询）
-      return allTypes.filter(t => ['none', 'eq'].includes(t.value))
-
-    case 'inputNumber':
-      // 数字类型：支持不查询、等于、大于、小于、大于等于、小于等于、区间
-      return allTypes.filter(t =>
-        ['none', 'eq', 'gt', 'lt', 'gte', 'lte', 'between'].includes(t.value)
-      )
-
-    case 'select':
-    case 'radio':
-      // 单选类型：只支持不查询、等于
-      return allTypes.filter(t => ['none', 'eq'].includes(t.value))
-
-    case 'selectMultiple':
-    case 'checkbox':
-      // 多选类型：只支持不查询、多选
-      return allTypes.filter(t => ['none', 'in'].includes(t.value))
-
-    case 'datePicker':
-    case 'datetimePicker':
-      // 日期类型：支持不查询、等于、大于、小于、大于等于、小于等于、区间
-      return allTypes.filter(t =>
-        ['none', 'eq', 'gt', 'lt', 'gte', 'lte', 'between'].includes(t.value)
-      )
-
-    case 'upload':
-      // 文件上传：只支持不查询
-      return allTypes.filter(t => t.value === 'none')
-
-    default:
-      return allTypes
-  }
-}
-
-// 当前字段可用的查询方式
-const availableQueryTypes = computed(() => {
-  // 敏感字段只能选择"不查询"
-  if (fieldConfigFormData.isSensitiveField) {
-    return QUERY_TYPE_OPTIONS.filter(t => t.value === 'none')
-  }
-  return getAvailableQueryTypes(fieldConfigFormData.controlType)
-})
-
-// 监听控件类型变化，自动调整查询方式
-const watchControlType = () => {
-  const available = availableQueryTypes.value
-  const currentQueryType = fieldConfigFormData.queryType
-
-  // 如果当前查询方式不再可用，自动切换到第一个可用的
-  const isAvailable = available.some(t => t.value === currentQueryType)
-  if (!isAvailable && available.length > 0) {
-    fieldConfigFormData.queryType = available[0].value
-  }
-}
-
-// 监听敏感字段变化，自动设置相关属性
-const watchSensitiveField = isSensitive => {
-  if (isSensitive) {
-    // 当设置为敏感字段时，自动设置：
-    // 1. 列表显示 = false
-    // 2. 新增可录 = false
-    // 3. 新增显示 = false
-    // 4. 查询方式 = "none"
-    fieldConfigFormData.isShowList = false
-    fieldConfigFormData.isAddable = false
-    fieldConfigFormData.isShowInAdd = false
-    fieldConfigFormData.queryType = 'none'
-  }
-}
-
-// 监听控件类型变化
-watch(() => fieldConfigFormData.controlType, watchControlType)
-
-// 监听敏感字段变化
-watch(() => fieldConfigFormData.isSensitiveField, watchSensitiveField)
-
-const getDefaultFields = () => [
-  {
-    dbFieldName: 'id',
-    dbFieldNameAlias: 'id',
-    dbFieldTxt: '主键',
-    dbType: 'varchar',
-    dbLength: 36,
-    dbPointLength: null,
-    dbIsNull: false,
-    dbIsKey: true,
-    dbIsPersist: true,
-    dbDefaultVal: '',
-    isShowForm: false,
-    isShowList: false,
-    isQuery: false,
-    isReadOnly: true,
-    fieldMustInput: '0',
-    controlType: 'input',
-    queryType: 'none',
-    controlConfig: {}
-  },
-  {
-    dbFieldName: 'create_time',
-    dbFieldNameAlias: 'createTime',
-    dbFieldTxt: '创建时间',
-    dbType: 'datetime',
-    dbLength: null,
-    dbPointLength: null,
-    dbIsNull: true,
-    dbIsKey: false,
-    dbIsPersist: true,
-    dbDefaultVal: '',
-    isShowForm: false,
-    isShowList: false,
-    isQuery: false,
-    isReadOnly: true,
-    fieldMustInput: '0',
-    controlType: 'datetimePicker',
-    queryType: 'none',
-    controlConfig: {}
-  },
-  {
-    dbFieldName: 'update_time',
-    dbFieldNameAlias: 'updateTime',
-    dbFieldTxt: '更新时间',
-    dbType: 'datetime',
-    dbLength: null,
-    dbPointLength: null,
-    dbIsNull: true,
-    dbIsKey: false,
-    dbIsPersist: true,
-    dbDefaultVal: '',
-    isShowForm: false,
-    isShowList: false,
-    isQuery: false,
-    isReadOnly: true,
-    fieldMustInput: '0',
-    controlType: 'datetimePicker',
-    queryType: 'none',
-    controlConfig: {}
-  },
-  {
-    dbFieldName: 'create_by',
-    dbFieldNameAlias: 'createBy',
-    dbFieldTxt: '创建人',
-    dbType: 'text',
-    dbLength: 50,
-    dbPointLength: null,
-    dbIsNull: true,
-    dbIsKey: false,
-    dbIsPersist: true,
-    dbDefaultVal: '100',
-    isShowForm: false,
-    isShowList: false,
-    isQuery: false,
-    isReadOnly: false,
-    fieldMustInput: '0',
-    controlType: 'input',
-    queryType: 'none',
-    controlConfig: {}
-  },
-  {
-    dbFieldName: 'update_by',
-    dbFieldNameAlias: 'updateBy',
-    dbFieldTxt: '更新人',
-    dbType: 'text',
-    dbLength: 50,
-    dbPointLength: null,
-    dbIsNull: true,
-    dbIsKey: false,
-    dbIsPersist: true,
-    dbDefaultVal: '100',
-    isShowForm: false,
-    isShowList: false,
-    isQuery: false,
-    isReadOnly: false,
-    fieldMustInput: '0',
-    controlType: 'input',
-    queryType: 'none',
-    controlConfig: {}
-  },
-  {
-    dbFieldName: 'delete_flag',
-    dbFieldNameAlias: 'deleteFlag',
-    dbFieldTxt: '删除标记',
-    dbType: 'int',
-    dbLength: null,
-    dbPointLength: null,
-    dbIsNull: true,
-    dbIsKey: false,
-    dbIsPersist: true,
-    dbDefaultVal: '0',
-    isShowForm: false,
-    isShowList: false,
-    isQuery: false,
-    isReadOnly: true,
-    fieldMustInput: '0',
-    controlType: 'inputNumber',
-    queryType: 'none',
-    controlConfig: {}
-  }
-]
-
-const loading = ref(false)
-const tableData = ref([])
-const selectedRows = ref([])
-const dialogVisible = ref(false)
-const dialogTitle = ref('新增数据表')
-const isEdit = ref(false)
-const formRef = ref(null)
-const activeTab = ref('fields')
-const baseInfoExpanded = ref(true)
-const datasourceOptions = ref([])
-const queryParams = reactive({
-  tableName: '',
-  tableType: null,
-  isDbSynch: '',
-  pageNo: 1,
-  pageSize: 10
-})
-const pagination = reactive({
-  total: 0,
-  current: 1,
-  pageSize: 10
-})
-
-// 关联类型选项（移除多对一）
-const RELATION_TYPE_OPTIONS = [
-  { label: '一对多', value: 'one_to_many' },
-  { label: '一对一', value: 'one_to_one' }
-]
-
-const FORM_COLUMNS_OPTIONS = [
-  { label: '1列', value: 1 },
-  { label: '2列', value: 2 },
-  { label: '3列', value: 3 },
-  { label: '4列', value: 4 }
-]
-
-const formData = reactive({
-  id: null,
-  tableName: '',
-  tableTxt: '',
-  tableType: 0,
-  datasourceId: null,
-  mainTable: '',
-  isCheckbox: 'N',
-  isPage: 'Y',
-  isTree: 'N',
-  formColumns: 2,
-  relationConfig: {
-    relationType: 'one_to_many',
-    mainTableField: 'id',
-    subTableField: 'main_table_id',
-    relationFieldName: 'mainTableId'
-  },
-  fields: [],
-  indexes: []
-})
-
-const mainTableOptions = ref([])
-
-const baseFormRules = {
-  tableName: [{ required: true, message: '请输入表名', trigger: 'blur' }],
-  tableTxt: [{ required: true, message: '请输入表说明', trigger: 'blur' }],
-  tableType: [{ required: true, message: '请选择表类型', trigger: 'change' }]
-}
-
-const indexDialogVisible = ref(false)
-const indexDialogTitle = ref('新增索引')
-const indexFormRef = ref(null)
-const currentIndexIndex = ref(-1)
-const indexFormData = reactive({
-  indexName: '',
-  indexType: 'normal',
-  indexField: []
-})
-const indexFormRules = {
-  indexName: [{ required: true, message: '请输入索引名称', trigger: 'blur' }],
-  indexType: [{ required: true, message: '请选择索引类型', trigger: 'change' }],
-  indexField: [{ required: true, message: '请选择索引字段', trigger: 'change', type: 'array' }]
-}
-
-const fieldOptions = computed(() => {
-  return formData.fields.map(f => ({
-    label: f.dbFieldName,
-    value: f.dbFieldName
-  }))
-})
-
-// 主表字段选项（用于附表关联字段配置）
-const mainTableFieldOptions = computed(() => {
-  const mainTable = mainTableOptions.value.find(t => t.tableName === formData.mainTable)
-  if (!mainTable?.fields) return []
-  return mainTable.fields.map(f => ({
-    label: f.dbFieldName,
-    value: f.dbFieldName
-  }))
-})
-
-// 附表字段选项
-const subTableFieldOptions = computed(() => {
-  return formData.fields.map(f => ({
-    label: f.dbFieldName,
-    value: f.dbFieldName
-  }))
-})
-
-// 预设校验规则
-const PRESET_VALIDATION_RULES = [
-  {
-    label: '邮箱',
-    value: 'email',
-    pattern: '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$',
-    message: '请输入正确的邮箱地址'
-  },
-  { label: '手机号', value: 'phone', pattern: '^1[3-9]\\d{9}$', message: '请输入正确的手机号' },
-  {
-    label: '身份证号',
-    value: 'idCard',
-    pattern: '(^\\d{15}$)|(^\\d{18}$)|(^\\d{17}(\\d|X|x)$)',
-    message: '请输入正确的身份证号'
-  },
-  {
-    label: 'URL',
-    value: 'url',
-    pattern: '^(https?|ftp):\\/\\/[^\\s/$.?#].[^\\s]*$',
-    message: '请输入正确的URL地址'
-  },
-  { label: '数字', value: 'number', pattern: '^-?\\d+(\\.\\d+)?$', message: '请输入数字' },
-  { label: '整数', value: 'integer', pattern: '^-?\\d+$', message: '请输入整数' },
-  { label: '正整数', value: 'positiveInteger', pattern: '^[1-9]\\d*$', message: '请输入正整数' },
-  { label: '中文', value: 'chinese', pattern: '^[\\u4e00-\\u9fa5]+$', message: '请输入中文' }
-]
-
-// 布局类型选项
-const LAYOUT_TYPE_OPTIONS = [
-  { label: '默认排列', value: 'default' },
-  { label: '单独一行', value: 'fullRow' },
-  { label: '换行', value: 'newLine' }
-]
-
-// 脱敏类型选项
-const DESENSITIZE_TYPE_OPTIONS = [
-  { label: '不脱敏', value: 'none' },
-  { label: '手机号', value: 'phone' },
-  { label: '身份证号', value: 'idCard' },
-  { label: '银行卡号', value: 'bankCard' },
-  { label: '邮箱', value: 'email' },
-  { label: '姓名', value: 'name' },
-  { label: '地址', value: 'address' },
-  { label: '自定义', value: 'custom' }
-]
-
-// 字段配置对话框相关
-const fieldConfigDialogVisible = ref(false)
-const currentFieldIndex = ref(-1)
-const fieldConfigFormRef = ref(null)
-const fieldConfigActiveTab = ref('control')
-const fieldConfigFormData = reactive({
-  controlType: 'input',
-  queryType: 'none',
-  isShowList: true,
-  isShowForm: true,
-  isEditable: true,
-  isAddable: true,
-  isShowInAdd: true,
-  layoutType: 'default',
-  isSensitiveField: false,
-  desensitizeType: 'none',
-  customDesensitize: {
-    startIndex: 0,
-    endIndex: 0,
-    maskChar: '*'
-  },
-  controlConfig: {
-    dataSourceType: 'static',
-    dictionaryCode: '',
-    options: [],
-    apiUrl: '',
-    apiMethod: 'GET',
-    apiParams: {},
-    dateFormat: '',
-    multiple: false,
-    limit: 1,
-    fileTypes: [],
-    maxSize: 10
-  },
-  validationRules: {
-    required: false,
-    minLength: null,
-    maxLength: null,
-    min: null,
-    max: null,
-    pattern: '',
-    presetRule: '',
-    message: ''
-  }
-})
-
-// 打开字段配置对话框
-const openFieldConfigDialog = (row, index) => {
-  currentFieldIndex.value = index
-  currentConfigField.value = row
-
-  // 重置到控件配置tab
-  fieldConfigActiveTab.value = 'control'
-
-  // 初始化表单数据
-  fieldConfigFormData.controlType = row.controlType || getDefaultControlType(row.dbType)
-  fieldConfigFormData.queryType =
-    row.queryType || (row.isQuery ? getDefaultQueryType(row.dbType) : 'none')
-
-  // 显示权限配置
-  fieldConfigFormData.isShowList = row.isShowList !== false
-  fieldConfigFormData.isShowForm = row.isShowForm !== false
-  fieldConfigFormData.isEditable = row.isEditable !== false
-  fieldConfigFormData.isAddable = row.isAddable !== false
-  fieldConfigFormData.isShowInAdd = row.isShowInAdd !== false
-
-  // 布局配置
-  fieldConfigFormData.layoutType = row.layoutType || 'default'
-
-  // 敏感字段配置（密码等字段，列表不展示、数据不返回）
-  fieldConfigFormData.isSensitiveField = row.isSensitiveField === true
-
-  // 脱敏配置
-  fieldConfigFormData.desensitizeType = row.desensitizeType || 'none'
-  const customDesensitize = row.customDesensitize || {}
-  fieldConfigFormData.customDesensitize = {
-    startIndex: customDesensitize.startIndex ?? 0,
-    endIndex: customDesensitize.endIndex ?? 0,
-    maskChar: customDesensitize.maskChar || '*'
-  }
-
-  // 复制 controlConfig
-  const controlConfig = row.controlConfig || {}
-  fieldConfigFormData.controlConfig = {
-    dataSourceType: controlConfig.dataSourceType || 'static',
-    dictionaryCode: controlConfig.dictionaryCode || '',
-    options: controlConfig.options ? [...controlConfig.options] : [],
-    apiUrl: controlConfig.apiUrl || '',
-    apiMethod: controlConfig.apiMethod || 'GET',
-    apiParams: controlConfig.apiParams ? { ...controlConfig.apiParams } : {},
-    dateFormat: controlConfig.dateFormat || '',
-    multiple: controlConfig.multiple || false,
-    limit: controlConfig.limit || 1,
-    fileTypes: controlConfig.fileTypes ? [...controlConfig.fileTypes] : [],
-    maxSize: controlConfig.maxSize || 10
-  }
-
-  // 复制 validationRules
-  const validationRules = row.validationRules || {}
-  fieldConfigFormData.validationRules = {
-    required: validationRules.required || false,
-    minLength: validationRules.minLength ?? null,
-    maxLength: validationRules.maxLength ?? null,
-    min: validationRules.min ?? null,
-    max: validationRules.max ?? null,
-    pattern: validationRules.pattern || '',
-    presetRule: validationRules.presetRule || '',
-    message: validationRules.message || ''
-  }
-
-  fieldConfigDialogVisible.value = true
-}
-
-// 保存字段配置
-const handleFieldConfigSubmit = async () => {
-  const valid = await fieldConfigFormRef.value?.validate().catch(() => false)
-  if (!valid) return
-
-  if (currentFieldIndex.value >= 0) {
-    const field = formData.fields[currentFieldIndex.value]
-    field.controlType = fieldConfigFormData.controlType
-    field.queryType = fieldConfigFormData.queryType
-    field.isQuery = fieldConfigFormData.queryType !== 'none'
-
-    // 显示权限配置
-    field.isShowList = fieldConfigFormData.isShowList
-    field.isShowForm = fieldConfigFormData.isShowForm
-    field.isEditable = fieldConfigFormData.isEditable
-    field.isAddable = fieldConfigFormData.isAddable
-    field.isShowInAdd = fieldConfigFormData.isShowInAdd
-
-    // 布局配置
-    field.layoutType = fieldConfigFormData.layoutType
-
-    // 敏感字段配置
-    field.isSensitiveField = fieldConfigFormData.isSensitiveField
-
-    // 脱敏配置
-    field.desensitizeType = fieldConfigFormData.desensitizeType
-    field.customDesensitize = { ...fieldConfigFormData.customDesensitize }
-
-    field.controlConfig = { ...fieldConfigFormData.controlConfig }
-    field.validationRules = { ...fieldConfigFormData.validationRules }
-  }
-
-  fieldConfigDialogVisible.value = false
-}
-
-// 添加选项
-const addOption = () => {
-  fieldConfigFormData.controlConfig.options.push({
-    label: '',
-    value: ''
-  })
-}
-
-// 删除选项
-const removeOption = index => {
-  fieldConfigFormData.controlConfig.options.splice(index, 1)
-}
-
-// 判断是否需要显示选项配置
-const needOptionConfig = computed(() => {
-  return ['select', 'selectMultiple', 'radio', 'checkbox'].includes(fieldConfigFormData.controlType)
-})
-
-// 判断是否需要显示日期格式配置
-const needDateFormatConfig = computed(() => {
-  return ['datePicker', 'datetimePicker'].includes(fieldConfigFormData.controlType)
-})
-
-// 根据数据库类型获取可用的日期格式选项
-const availableDateFormatOptions = computed(() => {
-  // 年月日格式选项
-  const dateOnlyOptions = [
-    { label: 'YYYY-MM-DD', value: 'YYYY-MM-DD' },
-    { label: 'YYYY/MM/DD', value: 'YYYY/MM/DD' },
-    { label: 'YYYY年MM月DD日', value: 'YYYY年MM月DD日' }
-  ]
-
-  // 日期时间格式选项
-  const dateTimeOptions = [{ label: 'YYYY-MM-DD HH:mm:ss', value: 'YYYY-MM-DD HH:mm:ss' }]
-
-  // 如果没有当前配置的字段，返回所有选项
-  if (!currentConfigField.value) {
-    return [...dateOnlyOptions, ...dateTimeOptions]
-  }
-
-  // 根据数据库类型返回不同的选项
-  const dbType = currentConfigField.value.dbType
-  if (dbType === 'date') {
-    // date类型只能选择年月日格式
-    return dateOnlyOptions
-  }
-
-  // datetime或其他类型可以选择所有格式
-  return [...dateOnlyOptions, ...dateTimeOptions]
-})
-
-// 判断是否需要显示文件配置
-const needFileConfig = computed(() => {
-  return fieldConfigFormData.controlType === 'upload'
-})
-
-// 判断是否为文本类型字段（显示长度、正则、预设规则）
-const isTextFieldType = computed(() => {
-  return ['input', 'password', 'textarea', 'richText'].includes(fieldConfigFormData.controlType)
-})
-
-// 判断是否为数字类型字段（显示最小值、最大值）
-const isNumberFieldType = computed(() => {
-  return fieldConfigFormData.controlType === 'inputNumber'
-})
-
-// 判断是否为选择类型字段
-const isSelectFieldType = computed(() => {
-  return ['select', 'selectMultiple', 'radio', 'checkbox'].includes(fieldConfigFormData.controlType)
-})
-
-// 判断是否为日期类型字段
-const isDateFieldType = computed(() => {
-  return ['datePicker', 'datetimePicker'].includes(fieldConfigFormData.controlType)
-})
-
-// 获取控件类型标签
-const getControlTypeLabel = controlType => {
-  const option = CONTROL_TYPE_OPTIONS.find(o => o.value === controlType)
-  return option ? option.label : ''
-}
-
-// 获取查询方式标签
-const getQueryTypeLabel = queryType => {
-  const option = QUERY_TYPE_OPTIONS.find(o => o.value === queryType)
-  return option ? option.label : ''
-}
-
-const fetchDatasourceOptions = async () => {
-  try {
-    const res = await queryDatasourceList({ pageNo: 1, pageSize: 100 })
-    if (res.success) {
-      datasourceOptions.value = res.data?.list || []
-    }
-  } catch (error) {
-    console.error('获取数据源列表失败:', error)
-  }
-}
-
-const fetchMainTableOptions = async () => {
-  try {
-    const res = await pageQuery({ tableType: 1, pageNo: 1, pageSize: 100 })
-    if (res.success) {
-      mainTableOptions.value = res.data?.list || []
-    }
-  } catch (error) {
-    console.error('获取主表列表失败:', error)
-  }
-}
-
-const handleTableTypeChange = val => {
-  if (val === 2) {
-    fetchMainTableOptions()
-  } else {
-    formData.mainTable = ''
-  }
-}
-
-const fetchData = async () => {
-  loading.value = true
-  try {
-    const params = {
-      ...queryParams,
-      pageNo: pagination.current,
-      pageSize: pagination.pageSize
-    }
-    const res = await pageQuery(params)
-    if (res.success) {
-      tableData.value = res.data?.list || []
-      pagination.total = res.data?.total || 0
-    }
-  } catch (error) {
-    console.error('查询失败:', error)
-  } finally {
-    loading.value = false
-  }
-}
-
-const handleSearch = () => {
-  pagination.current = 1
-  fetchData()
-}
-
-const handleReset = () => {
-  queryParams.tableName = ''
-  queryParams.tableType = null
-  queryParams.isDbSynch = ''
-  pagination.current = 1
-  fetchData()
-}
-
-const handleSizeChange = size => {
-  pagination.pageSize = size
-  fetchData()
-}
-
-const handleCurrentChange = current => {
-  pagination.current = current
-  fetchData()
-}
-
-const handleSelectionChange = rows => {
-  selectedRows.value = rows
-}
-
-const resetFormData = () => {
-  Object.assign(formData, {
-    id: null,
-    tableName: '',
-    tableTxt: '',
-    tableType: 0,
-    datasourceId: null,
-    mainTable: '',
-    isCheckbox: 'N',
-    isPage: 'Y',
-    isTree: 'N',
-    formColumns: 2,
-    relationConfig: {
-      relationType: 'one_to_many',
-      mainTableField: 'id',
-      subTableField: 'main_table_id',
-      relationFieldName: 'mainTableId'
-    },
-    fields: getDefaultFields(),
-    indexes: []
-  })
-  activeTab.value = 'fields'
-}
-
-const openAddDialog = () => {
-  dialogTitle.value = '新增数据表'
-  isEdit.value = false
-  resetFormData()
-  dialogVisible.value = true
-}
-
-const openEditDialog = async row => {
-  dialogTitle.value = '编辑数据表'
-  isEdit.value = true
-  resetFormData()
-  try {
-    const res = await queryById(row.id)
-    if (res.success && res.data) {
-      const data = res.data
-      Object.assign(formData, {
-        id: data.id,
-        tableName: data.tableName,
-        tableTxt: data.tableTxt || '',
-        tableType: data.tableType ?? 0,
-        datasourceId: data.datasourceId,
-        mainTable: data.mainTable || '',
-        isCheckbox: data.isCheckbox || 'N',
-        isPage: data.isPage || 'Y',
-        isTree: data.isTree || 'N',
-        formColumns: data.formColumns || 2,
-        relationConfig: data.relationConfig || {
-          relationType: 'one_to_many',
-          mainTableField: 'id',
-          subTableField: 'main_table_id',
-          relationFieldName: 'mainTableId'
-        },
-        fields: data.fields || [],
-        indexes: data.indexes || []
-      })
-      if (data.tableType === 2) {
-        fetchMainTableOptions()
-      }
-    }
-  } catch (error) {
-    console.error('获取详情失败:', error)
-  }
-  dialogVisible.value = true
-}
-
-const handleSubmit = async () => {
-  const valid = await formRef.value?.validate().catch(() => false)
-  if (!valid) return
-
-  if (formData.fields.length === 0) {
-    ElMessage.warning('请至少添加一个字段')
-    activeTab.value = 'fields'
-    return
-  }
-
-  try {
-    const submitData = {
-      ...formData,
-      fields: formData.fields.map((f, index) => ({
-        ...f,
-        orderNum: index
-      }))
-    }
-    const api = formData.id ? update : insert
-    const res = await api(submitData)
-    if (res.success) {
-      ElMessage.success(formData.id ? '更新成功' : '新增成功')
-      dialogVisible.value = false
-      fetchData()
-    }
-  } catch (error) {
-    console.error('保存失败:', error)
-  }
-}
-
-const handleDelete = row => {
-  ElMessageBox.confirm(`确定要删除数据表「${row.tableName}」吗？`, '提示', {
-    type: 'warning'
-  })
-    .then(async () => {
-      try {
-        const res = await deleteById(row.id)
-        if (res.success) {
-          ElMessage.success('删除成功')
-          fetchData()
-        }
-      } catch (error) {
-        console.error('删除失败:', error)
-      }
-    })
-    .catch(() => {})
-}
-
-const handleBatchDelete = () => {
-  if (selectedRows.value.length === 0) {
-    ElMessage.warning('请选择要删除的数据')
-    return
-  }
-  ElMessageBox.confirm(`确定要删除选中的 ${selectedRows.value.length} 条数据吗？`, '提示', {
-    type: 'warning'
-  })
-    .then(async () => {
-      try {
-        const ids = selectedRows.value.map(row => row.id)
-        const res = await batchDeleteByIds(ids)
-        if (res.success) {
-          ElMessage.success('删除成功')
-          fetchData()
-        }
-      } catch (error) {
-        console.error('批量删除失败:', error)
-      }
-    })
-    .catch(() => {})
-}
-
-const handleSyncDb = row => {
-  ElMessageBox.confirm(`确定要将数据表「${row.tableName}」同步到数据库吗？`, '提示', {
-    type: 'info'
-  })
-    .then(async () => {
-      try {
-        const res = await syncDb(row.id, 1)
-        if (res.success) {
-          ElMessage.success('同步成功')
-          fetchData()
-        }
-      } catch (error) {
-        console.error('同步失败:', error)
-      }
-    })
-    .catch(() => {})
-}
-
+  TABLE_TYPE_OPTIONS,
+  SYNC_STATUS_OPTIONS,
+  DB_TYPE_OPTIONS,
+  ID_TYPE_OPTIONS,
+  FORM_COLUMNS_OPTIONS,
+  RELATION_TYPE_OPTIONS,
+  SYSTEM_FIELDS,
+  FIXED_NAME_FIELDS
+} from './constants'
+import {
+  toCamelCase,
+  isAllowDecimal,
+  getTableTypeLabel,
+  getTableTypeTagType,
+  getSyncStatusLabel,
+  getSyncStatusTagType,
+  getDbTypeLabel,
+  getIndexTypeLabel
+} from './utils'
+
+// 引入 composables
+import { useTableHead } from './composables/useTableHead'
+import { useFieldConfig } from './composables/useFieldConfig'
+import { useIndexConfig } from './composables/useIndexConfig'
+
+// 使用表管理核心逻辑
+const {
+  loading,
+  tableData,
+  selectedRows,
+  queryParams,
+  pagination,
+  dialogVisible,
+  dialogTitle,
+  isEdit,
+  formRef,
+  activeTab,
+  baseInfoExpanded,
+  datasourceOptions,
+  mainTableOptions,
+  formData,
+  baseFormRules,
+  fieldOptions,
+  mainTableFieldOptions,
+  subTableFieldOptions,
+  fetchDatasourceOptions,
+  fetchMainTableOptions,
+  handleTableTypeChange,
+  fetchData,
+  handleSearch,
+  handleReset,
+  handleSizeChange,
+  handleCurrentChange,
+  handleSelectionChange,
+  resetFormData,
+  openAddDialog,
+  openEditDialog,
+  handleSubmit,
+  handleDelete,
+  handleBatchDelete,
+  handleSyncDb,
+  openDataPreview,
+  copyPreviewLink
+} = useTableHead()
+
+// 使用字段配置逻辑
+const formDataRef = ref(formData)
+
+const {
+  fieldConfigDialogVisible,
+  currentFieldIndex,
+  fieldConfigFormRef,
+  fieldConfigActiveTab,
+  currentConfigField,
+  fieldConfigFormData,
+  availableControlTypes,
+  availableQueryTypes,
+  needOptionConfig,
+  needDateFormatConfig,
+  needFileConfig,
+  isTextFieldType,
+  isNumberFieldType,
+  availableDateFormatOptions,
+  openFieldConfigDialog,
+  handleFieldConfigSubmit,
+  addOption,
+  removeOption,
+  handlePresetRuleChange
+} = useFieldConfig({ formData: formDataRef })
+
+// 使用索引配置逻辑
+const {
+  indexDialogVisible,
+  indexDialogTitle,
+  indexFormRef,
+  currentIndexIndex,
+  indexFormData,
+  indexFormRules,
+  resetIndexForm,
+  openAddIndexDialog,
+  openEditIndexDialog,
+  handleIndexSubmit,
+  handleDeleteIndex
+} = useIndexConfig({ formData: formDataRef })
+
+// ID类型变化处理
 const handleIdTypeChange = row => {
   if (row.dbFieldName === 'id') {
     if (row.dbType === 'int') {
@@ -1049,12 +140,14 @@ const handleIdTypeChange = row => {
   }
 }
 
+// 字段名变化处理
 const handleFieldNameChange = row => {
   if (row.dbFieldName) {
     row.dbFieldNameAlias = toCamelCase(row.dbFieldName)
   }
 }
 
+// 添加字段
 const handleAddField = () => {
   const newField = {
     dbFieldName: '',
@@ -1087,114 +180,9 @@ const handleAddField = () => {
   }
 }
 
+// 删除字段
 const handleDeleteField = index => {
   formData.fields.splice(index, 1)
-}
-
-const resetIndexForm = () => {
-  Object.assign(indexFormData, {
-    indexName: '',
-    indexType: 'normal',
-    indexField: []
-  })
-}
-
-const openAddIndexDialog = () => {
-  indexDialogTitle.value = '新增索引'
-  currentIndexIndex.value = -1
-  resetIndexForm()
-  indexDialogVisible.value = true
-}
-
-const openEditIndexDialog = (row, index) => {
-  indexDialogTitle.value = '编辑索引'
-  currentIndexIndex.value = index
-  Object.assign(indexFormData, {
-    indexName: row.indexName,
-    indexType: row.indexType || 'normal',
-    indexField: row.indexField || []
-  })
-  indexDialogVisible.value = true
-}
-
-const handleIndexSubmit = async () => {
-  const valid = await indexFormRef.value?.validate().catch(() => false)
-  if (!valid) return
-
-  if (currentIndexIndex.value === -1) {
-    formData.indexes.push({ ...indexFormData })
-  } else {
-    formData.indexes[currentIndexIndex.value] = { ...indexFormData }
-  }
-  indexDialogVisible.value = false
-}
-
-const handleDeleteIndex = index => {
-  formData.indexes.splice(index, 1)
-}
-
-const getTableTypeLabel = tableType => {
-  const option = TABLE_TYPE_OPTIONS.find(item => item.value === tableType)
-  return option?.label || '-'
-}
-
-const getTableTypeTagType = tableType => {
-  const typeMap = {
-    0: 'info',
-    1: 'primary',
-    2: 'success'
-  }
-  return typeMap[tableType] || 'info'
-}
-
-const getSyncStatusLabel = isDbSynch => {
-  return isDbSynch === 'Y' ? '已同步' : '未同步'
-}
-
-const getSyncStatusTagType = isDbSynch => {
-  return isDbSynch === 'Y' ? 'success' : 'warning'
-}
-
-const getDbTypeLabel = dbType => {
-  const option = DB_TYPE_OPTIONS.find(item => item.value === dbType)
-  return option?.label || dbType
-}
-
-const getIndexTypeLabel = indexType => {
-  const option = INDEX_TYPE_OPTIONS.find(item => item.value === indexType)
-  return option?.label || indexType
-}
-
-// 获取数据预览链接
-const getPreviewLink = tableId => {
-  const baseUrl = window.location.origin + window.location.pathname
-  const previewPath = `/tableData/${tableId}`
-  // 处理 qiankun 环境下的路径
-  const currentPath = window.location.pathname
-  const segments = currentPath.split('/').filter(s => s)
-  if (segments.length > 1) {
-    // 如果有前缀路径（如 qiankun 主应用路径）
-    return `${window.location.origin}/${segments[0]}/tableData/${tableId}`
-  }
-  return `${baseUrl.replace(/\/[^/]*$/, '')}/tableData/${tableId}`
-}
-
-// 打开数据预览页面
-const openDataPreview = row => {
-  router.push(`/tableData/${row.id}`)
-}
-
-// 复制预览链接
-const copyPreviewLink = row => {
-  const link = getPreviewLink(row.id)
-  navigator.clipboard
-    .writeText(link)
-    .then(() => {
-      ElMessage.success('链接已复制到剪贴板')
-    })
-    .catch(() => {
-      ElMessage.error('复制失败，请手动复制')
-    })
 }
 
 onMounted(() => {
@@ -1205,6 +193,7 @@ onMounted(() => {
 
 <template>
   <div class="table-head-page">
+    <!-- 搜索卡片 -->
     <ElCard class="search-card">
       <div class="search-bar">
         <div class="search-item">
@@ -1260,6 +249,7 @@ onMounted(() => {
       </div>
     </ElCard>
 
+    <!-- 数据表格 -->
     <ElCard class="table-card">
       <ElTable
         v-loading="loading"
@@ -1274,7 +264,7 @@ onMounted(() => {
         <ElTableColumn prop="tableType" label="表类型" width="100" align="center">
           <template #default="{ row }">
             <ElTag :type="getTableTypeTagType(row.tableType)" size="small">
-              {{ getTableTypeLabel(row.tableType) }}
+              {{ getTableTypeLabel(row.tableType, TABLE_TYPE_OPTIONS) }}
             </ElTag>
           </template>
         </ElTableColumn>
@@ -1297,7 +287,11 @@ onMounted(() => {
               <div class="link-popover">
                 <p class="link-label">数据预览链接：</p>
                 <div class="link-content">
-                  <ElInput :model-value="getPreviewLink(row.id)" readonly size="small" />
+                  <ElInput
+                    :model-value="window.location.origin + '/tableData/' + row.id"
+                    readonly
+                    size="small"
+                  />
                   <ElButton type="primary" size="small" @click="copyPreviewLink(row)">
                     复制
                   </ElButton>
@@ -1321,8 +315,8 @@ onMounted(() => {
 
       <div class="pagination-wrapper">
         <ElPagination
-          v-model:current-page="pagination.current"
-          v-model:page-size="pagination.pageSize"
+          :current-page="pagination.current"
+          :page-size="pagination.pageSize"
           :total="pagination.total"
           :page-sizes="[10, 20, 50, 100]"
           layout="total, sizes, prev, pager, next, jumper"
@@ -1332,14 +326,17 @@ onMounted(() => {
       </div>
     </ElCard>
 
+    <!-- 新增/编辑弹窗 -->
     <ElDialog
-      v-model="dialogVisible"
+      :model-value="dialogVisible"
+      @update:model-value="v => (dialogVisible = v)"
       :title="dialogTitle"
       width="1200px"
       destroy-on-close
       :close-on-click-modal="false"
     >
       <div class="dialog-content">
+        <!-- 基础信息 -->
         <div class="section-header" @click="baseInfoExpanded = !baseInfoExpanded">
           <div class="section-title">
             基础信息
@@ -1484,7 +481,9 @@ onMounted(() => {
           </div>
         </ElForm>
 
+        <!-- 配置Tabs -->
         <ElTabs v-model="activeTab" class="config-tabs">
+          <!-- 字段配置Tab -->
           <ElTabPane label="字段配置" name="fields">
             <div class="tab-toolbar">
               <ElButton type="primary" size="small" @click="handleAddField">新增字段</ElButton>
@@ -1611,6 +610,7 @@ onMounted(() => {
             </ElTable>
           </ElTabPane>
 
+          <!-- 索引配置Tab -->
           <ElTabPane label="索引配置" name="indexes">
             <div class="tab-toolbar">
               <ElButton type="primary" size="small" @click="openAddIndexDialog">新增索引</ElButton>
@@ -1654,8 +654,10 @@ onMounted(() => {
       </template>
     </ElDialog>
 
+    <!-- 索引配置弹窗 -->
     <ElDialog
-      v-model="indexDialogVisible"
+      :model-value="indexDialogVisible"
+      @update:model-value="v => (indexDialogVisible = v)"
       :title="indexDialogTitle"
       width="500px"
       destroy-on-close
@@ -1672,7 +674,10 @@ onMounted(() => {
             style="width: 100%"
           >
             <ElOption
-              v-for="item in INDEX_TYPE_OPTIONS"
+              v-for="item in [
+                { label: '普通索引', value: 'normal' },
+                { label: '唯一索引', value: 'unique' }
+              ]"
               :key="item.value"
               :label="item.label"
               :value="item.value"
@@ -1695,20 +700,24 @@ onMounted(() => {
           </ElSelect>
         </ElFormItem>
       </ElForm>
+
       <template #footer>
         <ElButton @click="indexDialogVisible = false">取消</ElButton>
         <ElButton type="primary" @click="handleIndexSubmit">确定</ElButton>
       </template>
     </ElDialog>
 
+    <!-- 字段配置弹窗 -->
     <ElDialog
-      v-model="fieldConfigDialogVisible"
+      :model-value="fieldConfigDialogVisible"
+      @update:model-value="v => (fieldConfigDialogVisible = v)"
       title="字段配置"
       width="800px"
       destroy-on-close
       :close-on-click-modal="false"
     >
       <ElTabs v-model="fieldConfigActiveTab" type="card" class="field-config-tabs">
+        <!-- 控件配置 Tab -->
         <ElTabPane label="控件配置" name="control">
           <ElForm ref="fieldConfigFormRef" :model="fieldConfigFormData" label-width="100px">
             <ElFormItem label="控件类型">
@@ -1733,6 +742,7 @@ onMounted(() => {
               </ElSelect>
             </ElFormItem>
 
+            <!-- 选项配置 -->
             <template v-if="needOptionConfig">
               <ElFormItem label="数据来源">
                 <ElRadioGroup v-model="fieldConfigFormData.controlConfig.dataSourceType">
@@ -1793,18 +803,9 @@ onMounted(() => {
                   placeholder="请输入接口地址"
                 />
               </ElFormItem>
-
-              <ElFormItem
-                v-if="fieldConfigFormData.controlConfig.dataSourceType === 'api'"
-                label="请求方式"
-              >
-                <ElSelect v-model="fieldConfigFormData.controlConfig.apiMethod" style="width: 100%">
-                  <ElOption label="GET" value="GET" />
-                  <ElOption label="POST" value="POST" />
-                </ElSelect>
-              </ElFormItem>
             </template>
 
+            <!-- 日期格式配置 -->
             <template v-if="needDateFormatConfig">
               <ElFormItem label="日期格式">
                 <ElSelect
@@ -1821,6 +822,7 @@ onMounted(() => {
               </ElFormItem>
             </template>
 
+            <!-- 文件配置 -->
             <template v-if="needFileConfig">
               <ElFormItem label="是否多文件">
                 <ElSwitch
@@ -1861,13 +863,10 @@ onMounted(() => {
                 </ElSelect>
               </ElFormItem>
             </template>
-
-            <template v-if="!needOptionConfig && !needDateFormatConfig && !needFileConfig">
-              <div class="empty-tip">当前控件类型无需特殊配置</div>
-            </template>
           </ElForm>
         </ElTabPane>
 
+        <!-- 显示与布局 Tab -->
         <ElTabPane label="显示与布局" name="display">
           <ElForm ref="fieldConfigFormRef" :model="fieldConfigFormData" label-width="100px">
             <div class="permission-grid">
@@ -1907,81 +906,10 @@ onMounted(() => {
                 />
               </ElFormItem>
             </div>
-
-            <ElFormItem label="布局方式">
-              <ElSelect v-model="fieldConfigFormData.layoutType" style="width: 100%">
-                <ElOption
-                  v-for="item in LAYOUT_TYPE_OPTIONS"
-                  :key="item.value"
-                  :label="item.label"
-                  :value="item.value"
-                />
-              </ElSelect>
-            </ElFormItem>
-
-            <template v-if="fieldConfigFormData.controlType === 'password'">
-              <ElDivider>敏感字段配置</ElDivider>
-
-              <ElFormItem label="敏感字段">
-                <ElSwitch
-                  v-model="fieldConfigFormData.isSensitiveField"
-                  active-text="是"
-                  inactive-text="否"
-                />
-                <div class="form-tip mt-8">
-                  开启后：列表不展示该字段，接口返回数据时不返回该字段值，且不可配置查询条件
-                </div>
-              </ElFormItem>
-
-              <template v-if="fieldConfigFormData.isSensitiveField">
-                <ElFormItem label="脱敏类型">
-                  <ElSelect v-model="fieldConfigFormData.desensitizeType" style="width: 100%">
-                    <ElOption
-                      v-for="item in DESENSITIZE_TYPE_OPTIONS"
-                      :key="item.value"
-                      :label="item.label"
-                      :value="item.value"
-                    />
-                  </ElSelect>
-                </ElFormItem>
-
-                <template v-if="fieldConfigFormData.desensitizeType === 'custom'">
-                  <ElFormItem label="脱敏配置">
-                    <div class="desensitize-config">
-                      <span class="desensitize-label">保留前</span>
-                      <ElInputNumber
-                        v-model="fieldConfigFormData.customDesensitize.startIndex"
-                        :min="0"
-                        :max="100"
-                        size="small"
-                        style="width: 80px"
-                      />
-                      <span class="desensitize-label">位，保留后</span>
-                      <ElInputNumber
-                        v-model="fieldConfigFormData.customDesensitize.endIndex"
-                        :min="0"
-                        :max="100"
-                        size="small"
-                        style="width: 80px"
-                      />
-                      <span class="desensitize-label">位</span>
-                    </div>
-                  </ElFormItem>
-                  <ElFormItem label="脱敏字符">
-                    <ElInput
-                      v-model="fieldConfigFormData.customDesensitize.maskChar"
-                      maxlength="1"
-                      size="small"
-                      style="width: 100px"
-                      placeholder="如：*"
-                    />
-                  </ElFormItem>
-                </template>
-              </template>
-            </template>
           </ElForm>
         </ElTabPane>
 
+        <!-- 校验规则 Tab -->
         <ElTabPane label="校验规则" name="validation">
           <ElForm ref="fieldConfigFormRef" :model="fieldConfigFormData" label-width="100px">
             <ElFormItem label="必填校验">
@@ -1992,6 +920,7 @@ onMounted(() => {
               />
             </ElFormItem>
 
+            <!-- 文本类型字段：预设规则、长度、正则 -->
             <template v-if="isTextFieldType">
               <ElFormItem label="预设规则">
                 <ElSelect
@@ -1999,20 +928,13 @@ onMounted(() => {
                   placeholder="选择预设校验规则"
                   clearable
                   style="width: 100%"
-                  @change="
-                    val => {
-                      const rule = PRESET_VALIDATION_RULES.find(r => r.value === val)
-                      if (rule) {
-                        fieldConfigFormData.validationRules.pattern = rule.pattern
-                        if (!fieldConfigFormData.validationRules.message) {
-                          fieldConfigFormData.validationRules.message = rule.message
-                        }
-                      }
-                    }
-                  "
+                  @change="handlePresetRuleChange"
                 >
                   <ElOption
-                    v-for="item in PRESET_VALIDATION_RULES"
+                    v-for="item in [
+                      { label: '邮箱', value: 'email' },
+                      { label: '手机号', value: 'phone' }
+                    ]"
                     :key="item.value"
                     :label="item.label"
                     :value="item.value"
@@ -2042,11 +964,12 @@ onMounted(() => {
               <ElFormItem label="正则表达式">
                 <ElInput
                   v-model="fieldConfigFormData.validationRules.pattern"
-                  placeholder="请输入正则表达式（如：^[a-zA-Z]+$）"
+                  placeholder="请输入正则表达式"
                 />
               </ElFormItem>
             </template>
 
+            <!-- 数字类型字段：最小值、最大值 -->
             <template v-if="isNumberFieldType">
               <div class="validation-row">
                 <ElFormItem label="最小值">
@@ -2067,13 +990,6 @@ onMounted(() => {
                 </ElFormItem>
               </div>
             </template>
-
-            <ElFormItem label="错误提示">
-              <ElInput
-                v-model="fieldConfigFormData.validationRules.message"
-                placeholder="校验不通过时的提示信息"
-              />
-            </ElFormItem>
           </ElForm>
         </ElTabPane>
       </ElTabs>
@@ -2202,30 +1118,65 @@ onMounted(() => {
   align-items: center;
 }
 
-.tab-toolbar :deep(.el-button) {
-  padding: 8px 16px;
+.option-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
-:deep(.el-table .el-switch) {
-  height: 18px;
+.option-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-:deep(.el-table .el-switch__core) {
-  min-width: 32px;
-  height: 18px;
+.permission-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0 16px;
 }
 
-:deep(.el-table .el-switch__action) {
+.permission-grid :deep(.el-form-item) {
+  margin-bottom: 12px;
+}
+
+.validation-row {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+}
+
+.validation-row :deep(.el-form-item) {
+  margin-bottom: 12px;
+}
+
+.relation-config-section {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px dashed #dcdfe6;
+}
+
+.section-subtitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: #303133;
+  margin-bottom: 12px;
+  padding-left: 8px;
+  border-left: 2px solid #67c23a;
+}
+
+.header-tip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 14px;
   height: 14px;
-}
-
-:deep(.el-dialog__body) {
-  padding: 20px 24px;
-}
-
-:deep(.el-divider) {
-  margin: 16px 0;
+  font-size: 12px;
+  color: #409eff;
+  border: 1px solid #409eff;
+  border-radius: 50%;
+  margin-left: 4px;
+  cursor: pointer;
 }
 
 .link-popover {
@@ -2248,110 +1199,25 @@ onMounted(() => {
   flex: 1;
 }
 
-.relation-config-section {
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 1px dashed #dcdfe6;
+:deep(.el-table .el-switch) {
+  height: 18px;
 }
 
-.section-subtitle {
-  font-size: 13px;
-  font-weight: 600;
-  color: #303133;
-  margin-bottom: 12px;
-  padding-left: 8px;
-  border-left: 2px solid #67c23a;
+:deep(.el-table .el-switch__core) {
+  min-width: 32px;
+  height: 18px;
 }
 
-.option-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.option-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-/* 配置摘要样式 */
-.config-summary {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 4px;
-}
-
-.config-summary .empty-text {
-  color: #909399;
-  font-size: 12px;
-}
-
-.config-summary .ml-4 {
-  margin-left: 4px;
-}
-
-/* 表头提示图标样式 */
-.header-tip {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+:deep(.el-table .el-switch__action) {
   width: 14px;
   height: 14px;
-  font-size: 12px;
-  color: #409eff;
-  border: 1px solid #409eff;
-  border-radius: 50%;
-  margin-left: 4px;
-  cursor: pointer;
 }
 
-/* 权限配置网格样式 */
-.permission-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0 16px;
+:deep(.el-dialog__body) {
+  padding: 20px 24px;
 }
 
-.permission-grid :deep(.el-form-item) {
-  margin-bottom: 12px;
-}
-
-/* 校验规则行样式 */
-.validation-row {
-  display: flex;
-  gap: 24px;
-  align-items: flex-start;
-}
-
-.validation-row :deep(.el-form-item) {
-  margin-bottom: 12px;
-}
-
-/* 表单提示文字样式 */
-.form-tip {
-  margin-top: 8px;
-  font-size: 12px;
-  color: #909399;
-}
-
-/* 脱敏配置样式 */
-.desensitize-config {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.desensitize-label {
-  font-size: 13px;
-  color: #606266;
-  white-space: nowrap;
-}
-
-.mt-8 {
-  margin-top: 8px;
+:deep(.el-divider) {
+  margin: 16px 0;
 }
 </style>
